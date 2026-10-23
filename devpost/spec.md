@@ -23,14 +23,14 @@ There are five pieces, each with one job:
 PRD ref: `prd.md > The Core Journey`.
 
 1. **Organizer signs in and connects the calendar** (`prd.md > The Core Journey` step 1). Sign-in goes through Supabase and Google. Then a separate "Connect Google Calendar" step asks Google for calendar permission. The server stores the permission token, encrypted, in the database.
-2. **Organizer describes the meeting** (`prd.md > Poll creation in plain language`). The text goes to the server, then to the AI (job 1), which returns constraints in a fixed format. The server shows them for editing. On "Create poll" the server asks Google when the organizer is busy over the window, computes the free windows, cuts them into candidate slots (code), and saves the poll and slots.
+2. **Organizer describes the meeting** (`prd.md > Poll creation in plain language`). The text goes to the server, then to the AI (job 1), which returns constraints in a fixed format, including who is required and how many people to expect. The server shows them for editing, along with an optional close time for the poll. On "Create poll" the server asks Google when the organizer is busy over the window, computes the free windows, cuts them into candidate slots (code), and saves the poll and slots.
 3. **Organizer shares the link** (`prd.md > The Core Journey` step 3). The link contains a random token. The organizer sends it in WhatsApp, email or a chat. The app sends no invitation emails.
-4. **A guest opens the link and fills the form** (`prd.md > Guest response`). The page loads the poll by token. On submit, the server saves a guest (name, email) and a vote per slot (yes, prefer not, no), and gives the browser a private cookie so the same guest can return.
+4. **A guest opens the link and fills the form** (`prd.md > Guest response`). The page loads the poll by token. On submit, the server saves a guest (name, email) and a vote per slot (yes, prefer not, no), and gives the browser a private cookie so the same guest can return. The server then counts responses; when the expected number have responded, it emails the organizer "6 of 6 have filled in" with a link to the dashboard (`prd.md > Poll completion and closing`).
 5. **A guest types availability** (`prd.md > Guest plain-language availability`). The text, today's date and the guest's timezone go to the AI (job 2). It returns proposed time ranges in a fixed format. The server does not add anything yet. It shows "What I understood" (dates, times, timezone). The guest confirms or corrects.
 6. **Slots are added by code** (`prd.md > AI-added slots`). On confirm, the server intersects the ranges with the organizer's free time, drops anything busy, skips duplicates, stops at the cap of 3, and saves new slots. It then emails the earlier voters "new options added".
-7. **A connected guest's calendar** (optional) is handled the same way: the server asks Google for free/busy and marks their yes/no per slot automatically, and may propose slots from it.
-8. **Organizer opens the dashboard** (`prd.md > Ranking and AI summary`). The server loads slots, votes and statements, runs the ranking (code), then asks the AI (job 3) to write the summary and per-slot explanations from the numbers it is given. The page shows people, votes, the AI note and the ranking.
-9. **Organizer picks a slot** (`prd.md > Finalizing`). The server creates the Google event on the organizer's calendar, saves the result, and emails every guest the confirmation with an "add to calendar" link.
+7. **A connected guest's calendar** (optional) is handled the same way: the server asks Google for free/busy and marks their yes/no per slot automatically, and may propose slots from it. The form shows these marks pre-filled, and the guest can change any of them (an explicit vote overrides the calendar).
+8. **Organizer opens the dashboard** (`prd.md > Ranking and AI summary`). The server loads slots, votes and statements, runs the ranking (code), then asks the AI (job 3) to write the summary and per-slot explanations from the numbers it is given. Code also works out the best slot overall and the best slot if each person were required (`conditionalAdvice`); the AI turns those into sentences like "If Sam must be there, choose option 2; otherwise option 1 works for 5 of 6." The dashboard also shows each person's stated preferences and the "4 of 6 responded" count. The page shows people, votes, the AI note and the ranking.
+9. **Organizer picks a slot** (`prd.md > Finalizing`). The server creates the Google event on the organizer's calendar, saves the result, and emails every guest the confirmation with an "add to calendar" link. The organizer can close the poll before this; a closed poll accepts no new answers but can still be picked.
 
 ```mermaid
 flowchart LR
@@ -115,6 +115,8 @@ Deterministic functions with no network access, so they can be fully tested:
 - `statusFor`: for each person and slot, gives yes, prefer not, no, or unknown. A connected guest's calendar sets yes/no automatically; an explicit vote overrides it *(assumption)*.
 - `rank`: orders slots by fewest "no", then fewest "prefer not", then constraint penalties, then spread across days. Weights: yes 1.0, prefer not 0.5, no 0 *(assumption, tunable; tests pin them)*.
 - `addAiSlots`: intersects proposed ranges with the organizer's free windows, removes duplicates, and stops at the cap (a config value, 3).
+- `conditionalAdvice`: for the top slot overall, and for each person treated as required, finds the best slot and who it leaves out, so "if Sam must be there, option 2; otherwise option 1" is computed by code, not guessed by the model.
+- `isComplete`: compares responses with the expected count, and reports "4 of 6" for the dashboard and emails.
 - `basisText`: builds the "based on 2 connected calendars, 2 votes, and 1 stated availability" line from counts, so the basis is never invented by the model.
 PRD ref: `prd.md > AI-added slots`, `prd.md > Ranking and AI summary`.
 
@@ -123,9 +125,9 @@ Everything that talks to the model lives in `src/lib/ai/`, behind one `complete(
 
 | Job | Input | Output (checked by a zod schema) |
 |---|---|---|
-| `parsePoll` | The organizer's text, today's date, the organizer's timezone | people (with notes, timezone, hours), window, duration, working hours, constraints each marked `hard` or `soft`, and a list of things it did not understand |
-| `parseStatement` | The guest's text, today's date, the guest's timezone | a plain-language restatement, a list of time ranges with timezone, and anything ambiguous |
-| `explain` | The ranked slots with their counts and constraint results (computed by code) | a summary of the best and the not-best options, and one explanation per slot |
+| `parsePoll` | The organizer's text, today's date, the organizer's timezone | people (with notes, timezone, hours, and whether each is required), expected number of people, window, duration, working hours, constraints each marked `hard` or `soft`, and a list of things it did not understand |
+| `parseStatement` | The guest's text, today's date, the guest's timezone | a plain-language restatement, a list of time ranges with timezone, a short preferences summary for the organizer, and anything ambiguous |
+| `explain` | The ranked slots with their counts, constraint results, and the conditional alternatives (all computed by code) | a summary of the best and the not-best options, conditional advice sentences, and one explanation per slot |
 
 Rules for all three: the model is given the date and timezone so "next week" has a fixed meaning; its answer must pass the schema; one automatic retry on invalid output; then a plain "I couldn't read that" result. The model is never given calendar event details, only counts and times. The model's output is never trusted for permissions or limits. Every call is recorded in `ai_runs` (input, output, valid or not, milliseconds) so behavior can be inspected and replayed.
 PRD ref: `prd.md > Poll creation in plain language`, `prd.md > Guest plain-language availability`, `prd.md > Ranking and AI summary`.
@@ -135,15 +137,23 @@ The poll link carries a random token that finds the poll. After a guest submits,
 PRD ref: `prd.md > States and Boundaries` (permissions, returning guest).
 
 ### Email
-`sendConfirmation` and `sendNewOptions` send through Brevo SMTP. Every send is recorded in `email_log` with its result, so a failed send is visible and never blocks the page. Guest addresses are used only for these two emails.
+`sendConfirmation`, `sendNewOptions` and `sendPollUpdate` (to the organizer) send through Brevo SMTP. Every send is recorded in `email_log` with its result, so a failed send is visible and never blocks the page. Guest addresses are used only for the first two emails; `sendPollUpdate` goes to the organizer's own address from sign-in.
 PRD ref: `prd.md > Emails`, `prd.md > AI-added slots`, `prd.md > Finalizing`.
 
 ### Calendar Connections
 Organizer: Supabase sign-in handles identity. A separate "Connect Google Calendar" step asks for the calendar permissions and stores the token, encrypted, in `calendar_connections`. Guests who connect use a narrower availability-only permission and no account. Disconnecting deletes the token and revokes it with Google.
 PRD ref: `prd.md > Privacy`.
 
+### Poll Completion and Closing
+After each guest submit, the server runs `isComplete`. When the expected number have responded, it sends `sendPollUpdate` once. The poll has an optional `close_at`; closing is checked on every request (a poll past its close time is treated as closed), and the organizer also has a "Close poll now" button, which sends the update immediately. A closed poll rejects new responses and still lets the organizer pick. *(Assumption: the update email at the scheduled close time needs a timer; see Decisions and Open Issues.)*
+PRD ref: `prd.md > Poll completion and closing`, `prd.md > States and Boundaries`.
+
+### Meet Again (stretch, last build slice)
+Lowest priority, built only if the core flow is working and tested. On the guest form a "Remember me for future meetings with this organizer" checkbox (off by default) sets a consent flag on the guest and keeps their calendar connection. A "New meeting with this group" button on the dashboard copies the consenting guests into a new poll and uses their stored calendars to propose slots, so those guests need not answer again. Guests can disconnect, which removes the token and the consent. If it is not built, the demo narrates it as "next" and does not fake it.
+PRD ref: the stretch goal under `prd.md > Product Decisions` and `prd.md > Deferred From the POC`.
+
 ### Test Suite
-- **Unit (Vitest):** the engine: slot building, timezone handling (Jamie in BST, Europe/London), the cap, vote weighting, `basisText`.
+- **Unit (Vitest):** the engine: slot building, timezone handling (Jamie in BST, Europe/London), the cap, vote weighting, `basisText`, `conditionalAdvice`, and `isComplete`.
 - **AI evals (Vitest):** golden cases per job, starting with the Tom/Jamie example and "Tuesday or Wednesday afternoons, not Mondays". They check the output format and key facts (which days, which hours, which timezone). By default they run against recorded model answers; with `LIVE=1` they call the real model and report a pass rate.
 - **End-to-end (Playwright):** the demo path in a real browser: create a poll, a guest votes, a guest types availability and confirms it, slots are added, the organizer picks, the confirmation is recorded. It uses the in-memory fake calendar and a login that exists only when `E2E_TEST_MODE` is set.
 - **Manual smoke test:** one run with real Google accounts before recording.
@@ -154,9 +164,9 @@ All times are stored in UTC (`timestamptz`) and shown in the viewer's timezone. 
 
 | Table | What it holds | Updated by | Returning |
 |---|---|---|---|
-| `polls` | id, organizer user id, title, constraints (JSON), window, duration, working hours, status (open or finalized), `share_token`, `final_option_id`, `google_event_id` | Create poll, finalize | Persists; the organizer finds it again on their dashboard |
+| `polls` | id, organizer user id, title, constraints (JSON), window, duration, working hours, expected count, required people, `close_at`, status (open, closed, or finalized), `share_token`, `final_option_id`, `google_event_id` | Create poll, finalize | Persists; the organizer finds it again on their dashboard |
 | `options` | id, poll id, start, end, source (`organizer_free`, `guest_added`, `ai_added`), added by statement id | Create poll; confirmed statements | Persists |
-| `guests` | id, poll id, name, email, timezone, `guest_token`, calendar connection id (optional) | Guest form | The cookie finds them |
+| `guests` | id, poll id, name, email, timezone, `guest_token`, preferences summary, calendar connection id (optional), remember consent (stretch) | Guest form | The cookie finds them |
 | `votes` | id, option id, guest id, choice (`yes`, `prefer_not`, `no`) | Guest form (editable until finalized) | Persists; the guest sees and can change them |
 | `statements` | id, guest id, text, AI interpretation (JSON), confirmed (true or false), confirmed ranges | Guest plain-language step | Persists |
 | `calendar_connections` | id, owner (organizer or guest), provider, encrypted token, scope, status | Connect, disconnect | Persists until disconnected |
@@ -175,13 +185,13 @@ calendarly/
 │   │   ├── poll/[id]/page.tsx        # Organizer Poll Dashboard
 │   │   ├── p/[token]/page.tsx        # Guest Poll page (+ What I understood)
 │   │   └── api/
-│   │       ├── polls/                # create, load, finalize
+│   │       ├── polls/                # create, load, close, finalize, meet-again (stretch)
 │   │       ├── guest/                # submit form, statement, confirm
 │   │       ├── calendar/             # OAuth connect and callback, disconnect
 │   │       └── test-login/           # exists only when E2E_TEST_MODE is set
 │   ├── components/                   # form, slot list, availability chips, AI note
 │   ├── lib/
-│   │   ├── engine/                   # slots, constraints, status, rank, addAiSlots, basisText
+│   │   ├── engine/                   # slots, constraints, status, rank, addAiSlots, conditionalAdvice, isComplete, basisText
 │   │   ├── ai/                       # complete(), prompts, zod schemas, parsePoll, parseStatement, explain
 │   │   ├── calendar/                 # CalendarProvider, google.ts, seeded.ts
 │   │   ├── email/                    # Brevo SMTP sender, templates
@@ -226,6 +236,7 @@ Everything below is unverified against live accounts; the first build step shoul
 - **Guests have no accounts**; a link token and a cookie identify them — the PRD requires it, and it removes a whole sign-in system.
 - **The database is only reachable from the server**, so there are no per-row access rules to configure. A browser can't read it directly.
 - **Free/busy is fetched when needed**, with no webhooks and no background jobs. The earlier Claude Docs PRD planned Google webhooks for caching; for six people that is not needed.
+- **Poll closing is checked on each request**, not by a timer. A scheduled email at the close time would need a background job, so it is optional (see Open Issues). "Close poll now" and "everyone has filled in" cover the demo.
 - **The dashboard refreshes with a button**, not live updates, because live syncing is hard to build and debug.
 - **Guests get an "add to calendar" link, not a write to their own calendars.** Only the organizer's calendar gets the event, as in `prd.md > Finalizing`.
 - **Some demo accounts use sample calendars** (`SeededCalendarProvider`), labeled as such, so the "no perfect slot" case can be designed exactly.
@@ -240,6 +251,8 @@ Everything below is unverified against live accounts; the first build step shoul
 - **Live URL on a custom domain**, bought through Vercel, in addition to the video and repository. Reason: the Google verification attempt needs a domain the learner owns.
 - **Tooling:** use the learner's Claude Code extensions and agentic workflows, plus Vercel's MCP server and deploy plugin.
 - **Testing:** fully automated, as described under Test Suite, including a test-only login for end-to-end tests.
+- **Demo:** 1–3 minutes, six people, a university group-project scenario; "X of Y have filled in" email to the organizer; the organizer can also set a close time; conditional advice when no option suits everyone; guests' stated preferences visible to the organizer; connected guests see pre-filled marks.
+- **Meet again** is a stretch goal and last priority in the build and the demo.
 - **Learning goals:** understand how the AI architecture works, how the tests work, and move toward being a good AI developer.
 
 ### Derived by the agent (need agreement at review)
@@ -253,6 +266,8 @@ Everything below is unverified against live accounts; the first build step shoul
 How the AI part works. What clarified it: the "code decides, the model interprets" rule, the three jobs with fixed input and output formats, and the `ai_runs` log. The agreed investigation during the build: when `parsePoll` works, open one `ai_runs` row together, then run the eval report and read which cases pass or fail and why. Evidence: the golden cases pass, and the learner can explain what the model is and is not trusted to do.
 
 ### Still open
+- **Scheduled close-time email:** needs a timer. Vercel offers cron jobs, but their limits depend on the plan (verify). If they don't fit, the email is sent on "Close poll now" and when the last expected guest responds, and the scheduled version moves to Later.
+- **"Who is required"** is read from the organizer's text by `parsePoll` and shown for editing. If the model misses it, the organizer can mark people as required in the editable summary.
 - **Google verification** (`prd.md > Open Questions`): needs the domain, a privacy page, a home page and a consent-flow video. Start as soon as the domain exists.
 - **Demo calendars** (`prd.md > Open Questions`): design the six accounts' calendars for the "no perfect slot" case, and decide which are real Google accounts and which are sample. Done in `5-build`.
 - **AI-added slot cap:** stays at 3, as a config value.

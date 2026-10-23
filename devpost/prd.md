@@ -11,7 +11,7 @@ Source: `scope.md > The Unique Kernel`, `scope.md > Who It's For`. The fuller re
 ## The Story
 **The coaching story (leads the pitch).** In a student coach program, the main coach had to arrange a meeting with a group of student coaches. The pitch and the demo use the same size: a coach and 5 student coaches, 6 people *(assumption)*. We used Doodle, WhatsApp votes, and Google Calendar scheduling, and people kept asking for more timeslots "because of this, because of that".
 
-**The second example** is friends and group scheduling: group projects, society members, and friend gatherings, usually 7–8 people.
+**The demo scenario** is a university but work-like one: a student organizing a group project meeting with a bunch of other students *(assumption: chosen because it resonates with most viewers; the coaching story stays as the origin of the idea)*. Friends and group scheduling (group projects, society members, friend gatherings), usually 7–8 people, is the second example.
 
 The **organizer** is anyone who coordinates a group. The **guests** are the group's members.
 
@@ -19,37 +19,38 @@ The **organizer** is anyone who coordinates a group. The **guests** are the grou
 Source: `scope.md > The Core Loop`, `scope.md > What "Working" Looks Like`.
 
 1. **Organizer arrives.** They log in and connect Google Calendar (a separate consent step from logging in).
-2. **Organizer creates a poll in plain language.** They type something like: "I want to meet with Tom and Jamie this week about our upcoming collaboration. Best to be afternoon meetings. Tom does not like meetings at night. My office hours are 9-5pm. Jamie works in the BST timezone 9-6pm." The same box takes constraints from the group, for example "Tom only does evenings because of work, and the coach can't do Tuesdays." The AI fills in the poll details and constraints, and the organizer checks them. The initial options come from the organizer's free time.
+2. **Organizer creates a poll in plain language.** For the demo scenario they type something like "I need a two-hour meeting this week with five other students about our group project. Afternoons are best, and Sam has to be there." *(assumption: example wording)*. Another example: "I want to meet with Tom and Jamie this week about our upcoming collaboration. Best to be afternoon meetings. Tom does not like meetings at night. My office hours are 9-5pm. Jamie works in the BST timezone 9-6pm." The same box takes constraints from the group, for example "Tom only does evenings because of work, and the coach can't do Tuesdays." The AI fills in the poll details and constraints (including who is required and how many people to expect), and the organizer checks them. The initial options come from the organizer's free time. The organizer may also set when the poll closes.
 3. **Organizer shares the link themselves,** in whatever channel they use (WhatsApp, email, a chat). The app does not send invitation emails. Optionally, they name who will be in the meeting. Guests need no account.
-4. **A guest fills in the poll form,** Doodle-style: they give a name and email, mark each option **yes / prefer not / no**, and can optionally connect Google Calendar. Near the end of the form is a plain-language box, for example "Tuesday or Wednesday afternoons, not Mondays".
+4. **A guest fills in the poll form,** Doodle-style: they give a name and email, mark each option **yes / prefer not / no**, and can optionally connect Google Calendar, in which case the marks are pre-filled from their free/busy status and they can change any of them. Near the end of the form is a plain-language box, for example "Tuesday or Wednesday afternoons, not Mondays".
 5. **The guest confirms what the AI understood.** If they used the plain-language box, they see the dates, times, and their timezone the AI understood and confirm or correct them. Only then are slots added.
 6. **The AI adds slots** from connected calendars or confirmed statements, only where the organizer's calendar shows free. Earlier voters get a "new options added" email.
-7. **The organizer opens the poll dashboard.** They see who has responded and who connected a calendar, each person's votes per time slot, and an AI-written summary of which option is best and which are not, with the basis stated.
-8. **The organizer picks the final slot** directly. The event is created on their calendar, and guests get a confirmation email with a one-click "add to calendar" link.
+7. **The organizer is emailed** when everyone expected has filled in (for example "6 of 6 have filled in") or when the poll's close time arrives *(assumption for the close-time email)*, with a link to the dashboard.
+8. **The organizer opens the poll dashboard.** They see who has responded and who connected a calendar, each person's votes and stated preferences, and an AI-written summary of which option is best and which are not, with the basis stated. When no option suits everyone, the summary gives conditional advice, for example "If Sam must be there, choose option 2; otherwise option 1 works for 5 of 6."
+9. **The organizer picks the final slot** directly. The event is created on their calendar, and guests get a confirmation email with a one-click "add to calendar" link.
 
-Success is the demo path: the "no perfect slot" case where the AI explains the trade-off and adds slots from a guest's plain-language statement (`scope.md > What "Working" Looks Like`). See Demo and Success Criteria below.
+Success is the demo path: the "no perfect slot" case where the AI explains the trade-off with conditional advice and adds slots from a guest's plain-language statement (`scope.md > What "Working" Looks Like`). See Demo and Success Criteria below.
 
 ## Screens and Layout
 Source: `scope.md > The POC Boundary`. Responsive web app; the guest page must work well on a phone.
 
 ### Organizer: Create Poll
-One plain-language box, and below it the poll as the AI understood it (title, dates, constraints, the people named, working hours and timezones) for the organizer to edit. Optional: the people who will be in the meeting. A "Create poll" action produces the share link, with a copy button, for the organizer to send in their own channel.
+One plain-language box, and below it the poll as the AI understood it (title, dates, constraints, the people named, working hours and timezones) for the organizer to edit. Optional: the people who will be in the meeting and how many to expect, and who is required. Optional: a close time for the poll. A "Create poll" action produces the share link, with a copy button, for the organizer to send in their own channel.
 
 ### Organizer: Poll Dashboard
-- A **people list:** each invited or responding person by name, with a mark showing whether they have connected a calendar.
+- A **people list:** each invited or responding person by name, with a mark showing whether they have connected a calendar and a line with their stated preferences. A count shows how many have responded (for example "4 of 6").
 - A **votes view:** time slots against people, showing each person's yes / prefer not / no (and which slots the AI added).
 - An **AI summary** at the top: which meeting is best, which is not, and why, ending with the basis ("based on 2 connected calendars, 2 votes, and 1 stated availability").
-- A **ranking** of options, each with its plain-language explanation.
-- A **pick this slot** action on each option.
+- A **ranking** of options, each with its plain-language explanation, and conditional advice when no option suits everyone ("if this person is important, use option 2; if not, option 1").
+- A **pick this slot** action on each option, and a way to close the poll.
 
 ### Guest: Poll Page (opened from the link)
-A Doodle-style form, top to bottom: the meeting title and context; name (pick one of the names the organizer listed, or type your own) and email; the option list, each with yes / prefer not / no; an optional "connect Google Calendar" action; the plain-language box near the end with a short example; a submit action. After submit, a confirmation of what they sent.
+A Doodle-style form, top to bottom: the meeting title and context; name (pick one of the names the organizer listed, or type your own) and email; the option list, each with yes / prefer not / no; an optional "connect Google Calendar" action that pre-fills the marks from free/busy status for the guest to change; the plain-language box near the end with a short example; a submit action. After submit, a confirmation of what they sent.
 
 ### Guest: "What I understood" Step
 Shown after the plain-language box is used and before anything is added: the dates, times, and the guest's timezone as the AI read them, with "Looks right" and a way to correct them.
 
 ### Emails
-Confirmation (with add-to-calendar link) and "new options added" (with a one-click link back to the poll). These are the only emails the app sends. A guest's email address is used for these two only; the app sends no invitation emails.
+Three emails: **confirmation** (with add-to-calendar link) and **"new options added"** (with a one-click link back to the poll), both to guests; and a **poll update** to the organizer when everyone expected has filled in (for example "6 of 6 have filled in") or when the poll closes. A guest's email address is used for the first two only; the app sends no invitation emails.
 
 ## Look and Feel
 Source: learner direction (`scope.md > Inspiration & Identity`: "extremely easy for beginners"; "do not make it generic").
@@ -68,6 +69,8 @@ Source: `scope.md > The Core Loop` step 1–2.
   - [ ] The organizer can see and edit what the AI understood before creating the poll.
   - [ ] Constraints that came from the group ("Tom only does evenings because of work, and the coach can't do Tuesdays") are accepted in the same way as the organizer's own.
   - [ ] The initial options are times when the organizer's connected calendar is free.
+  - [ ] The organizer can say who is required ("Sam has to be there") and how many people to expect; both appear in the editable summary.
+  - [ ] The organizer can set a close time for the poll, and can close it manually.
 
 ### Guest response
 Source: `scope.md > The POC Boundary`.
@@ -77,6 +80,8 @@ Source: `scope.md > The POC Boundary`.
   - [ ] Each option can be marked yes, prefer not, or no.
   - [ ] After submitting, I see a confirmation, and the organizer's dashboard shows my votes.
   - [ ] If the organizer listed names, I can pick mine ("claim" it) or type a different one.
+  - [ ] If I connect my Google Calendar, the marks are pre-filled from my free/busy status and I can change any of them.
+  - [ ] I can describe my preferences in plain language so the organizer can see them.
 
 ### Guest plain-language availability
 Source: `scope.md > The Core Loop` step 4–6.
@@ -97,7 +102,14 @@ Source: `scope.md > The Unique Kernel`.
   - [ ] Every option has a plain-language explanation that states its basis, for example "based on 2 connected calendars, 2 votes, and 1 stated availability".
   - [ ] The summary says which option is best and which are not, and names the trade-off (for example "Option A has everyone but is at 8am; Option B works better but Sam can't make it").
   - [ ] The ranking only advises. Nothing is chosen until the organizer picks.
+  - [ ] When no option suits everyone, the summary gives conditional advice based on who is required ("If Sam must be there, choose option 2; otherwise option 1 works for 5 of 6").
+  - [ ] Each person's stated preferences are visible to the organizer.
   - [ ] The AI may mention a different meeting length in its text but never creates slots of a different length.
+
+### Poll completion and closing
+- [ ] When the number of people the organizer expected have all responded, the organizer receives an email such as "6 of 6 have filled in" with a link to the dashboard.
+- [ ] When the poll's close time arrives, the poll stops taking new responses and the organizer is emailed how many responded *(assumption)*.
+- [ ] A closed poll still lets the organizer pick a slot.
 
 ### Finalizing
 - [ ] After the organizer picks a slot, the event appears on their Google Calendar.
@@ -116,9 +128,11 @@ States marked *(assumption)* were not stated by the learner. They are the obviou
 - **AI cannot understand a statement** *(assumption)*: it says so in plain words, gives an example of a statement it can read ("Tuesday or Wednesday afternoons, not Mondays"), and asks the guest to rephrase. Nothing is added.
 - **Returning guest** *(assumption)*: opening the same link again shows their saved votes and stated availability, which they can change until the organizer picks a slot. After the organizer picks, they see the final time.
 - **Guest without a calendar:** can vote and use the plain-language box; contributes votes and stated availability only.
-- **No perfect slot:** the AI says so explicitly, shows the options where the most people are available, explains the trade-off, and can add slots from a guest's statement. This is the demo's centerpiece.
+- **No perfect slot:** the AI says so explicitly, shows the options where the most people are available, explains the trade-off with conditional advice ("if this person is important, use option 2; if not, option 1"), and can add slots from a guest's statement. This is the demo's centerpiece.
 - **AI misreads a statement:** the guest sees the interpretation first and can correct it, and nothing is added until they confirm.
 - **Statement yields no free time** *(assumption)*: if the organizer's calendar has no matching free slot, the guest is told that nothing could be added.
+- **Poll closed** *(assumption)*: a guest opening the link sees that the poll has closed and their saved answers; they cannot change them.
+- **Fewer people than expected at close** *(assumption)*: the organizer's email and dashboard say "4 of 6 responded" and the ranking uses what is there.
 - **Calendar connection fails or is down:** that person is flagged on the dashboard and the ranking continues from everyone else.
 - **Cap reached** *(assumption)*: no more AI-added slots appear after 3; the guest is told their statement was received.
 - **Persistence** *(assumption)*: a poll, its options, votes, and statements persist after the organizer finalizes; nothing is deleted automatically.
@@ -141,30 +155,34 @@ States marked *(assumption)* were not stated by the learner. They are the obviou
 - **The pitch tells the coaching story at the demo's size: a coach and 5 student coaches, 6 people** *(assumption)*. The product is not claimed to be tested on larger groups.
 - **Design target: 4–8 guests for the proof of concept** *(assumption)*.
 - **"yes / prefer not / no" is one mark per option, and the ranking weighs "prefer not" below "yes" and above "no"** *(assumption)*. The exact weighting is for `4-spec`.
-- **The roster and "meet again" go to Later.**
+- **Roster and "meet again" are a stretch goal, built as the last slice and lowest priority in the demo** — the learner's answer. If built, guests opt in with a "remember me for future meetings" choice and can disconnect.
+- **Demo is 1–3 minutes; the scenario is a university group project; 6 people** — the learner's answer.
+- **"All filled in" means the number of people the organizer expected has responded; the organizer can also set a close time** — the learner's answer.
+- **Conditional recommendation** ("if this person is important, use option 2") when no option suits everyone — the learner's idea. The organizer says who is required in plain language.
 - **Warm "planner" look and feel** — agreed by the learner.
 
 ## Demo and Success Criteria
 - **The pitch** leads with the coaching story: the main coach arranging a meeting with a group of student coaches over Doodle, WhatsApp votes, and Google Calendar scheduling, with people asking for more timeslots "because of this, because of that". The friends-and-group example (7–8 people) is the second example. The story is told at the demo's size: a coach and 5 student coaches, 6 people *(assumption)*.
 - **The demo** uses 6 accounts (the organizer and 5 guests) *(assumption)* whose calendars are designed to produce a "no perfect slot" case. Real Google test accounts are used wherever possible; seeded accounts are labeled honestly. The pitch story and the demo are the same size, and nothing is claimed about larger groups.
 - **Before-and-after video** *(assumption)*: a back-and-forth in a group chat and poll (Doodle and WhatsApp votes), versus the same task in Calendarly.
-- **Demo path:** the organizer describes the meeting with constraints from the group (for example "Tom only does evenings because of work, and the coach can't do Tuesdays"), shares the link themselves, one guest votes without logging in, one guest connects a calendar, one guest states availability in plain language and confirms what the AI understood, the AI adds slots where the organizer's calendar is free, an earlier voter is notified, the organizer picks a slot, and the event and confirmation email go out.
-- **Centerpiece:** the "no perfect slot" case, where the AI explains the trade-off and adds slots from a guest's plain-language statement.
+- **Length:** the demo video is 1–3 minutes.
+- **Demo path:** the organizer describes a group project meeting for 6 students (including who is required), shares the link themselves, one guest votes without logging in, one guest connects a calendar and sees their marks pre-filled, one guest describes a preference and states availability in plain language and confirms what the AI understood, the AI adds slots where the organizer's calendar is free, an earlier voter is notified, the organizer receives the "6 of 6 have filled in" email, sees the ranking with conditional advice, picks a slot, and the event and confirmation email go out. Last priority: "meet again" with the same group.
+- **Centerpiece:** the "no perfect slot" case, where the AI explains the trade-off with conditional advice and adds slots from a guest's plain-language statement.
 
 ## What We're Building
 Everything the proof of concept must do:
-- Organizer login, Google Calendar connection, and plain-language poll creation.
+- Organizer login, Google Calendar connection, and plain-language poll creation (including who is required, how many to expect, and an optional close time).
 - The shareable link and the Doodle-style guest form (name, email, yes / prefer not / no).
-- Optional guest calendar connection.
+- Optional guest calendar connection, with pre-filled marks the guest can change.
 - Guest plain-language availability with the "what I understood" confirmation.
 - AI-added slots (cap 3), limited to the organizer's free time.
-- The organizer dashboard: people and calendar status, votes per slot, AI summary, ranking with explanations.
+- The organizer dashboard: people, calendar status and stated preferences, votes per slot, AI summary with conditional advice, ranking with explanations.
 - Organizer picks; the event is created; the confirmation email goes out.
-- The "new options added" email.
+- The "new options added" email, and the organizer's "X of Y have filled in" poll update email.
 - The "no perfect slot" demo case, and the before-and-after video.
 
 ## Deferred From the POC
-- **Saved roster and "meet again":** the earlier kernel; the new flow is already larger.
+- **Saved roster and "meet again"** is a stretch goal rather than deferred: build it last, and make it the lowest priority in the demo. It needs a "remember me" choice for guests and a way to disconnect. If it is not built, it is narrated as "next" and not faked.
 - **Outlook and Apple calendars:** each is its own setup and set of bugs.
 - **Auto-lock voting:** the poll advises instead.
 - **Groups of 20 and larger (including 50+):** the proof of concept is designed for 4–8 guests *(assumption)*.
@@ -173,7 +191,6 @@ Everything the proof of concept must do:
 - **Invitation emails sent by the app:** the organizer shares the link in their own channel instead.
 
 ## Possible Later Enhancements
-- Repeat meetings with a saved roster, so the second meeting is nearly one click.
 - Preference learning across polls, and conversational back-and-forth with guests.
 - Location- and travel-aware suggestions.
 - Outlook and Apple calendars.
@@ -187,6 +204,7 @@ Everything the proof of concept must do:
 ## Open Questions
 - **Group size check (can wait for `5-build`):** the proof of concept is designed for 4–8 guests and demoed with 6 people (the organizer and 5 guests). The ranking and dashboard need a check at 20 people (the size of the original coaching meeting) before claiming the product handles that size.
 - **Assumptions to confirm at review:** one mark per option with "prefer not" weighed between "yes" and "no"; the states marked *(assumption)* above; the 4–8 guest design target; the wording of the before-and-after video.
+- **Google token lifetime for "meet again" (can wait):** the learner will test whether Testing-mode tokens expire. Recording the demo in one sitting avoids the issue.
 - **Relative phrases and timezone (can wait for `4-spec`):** how "next week" and the guest's timezone are anchored and confirmed.
 - **AI-added slot cap (can wait):** keep 3, raise it, or apply it per source (calendar vs. statement). Stays at 3 until decided.
 - **Demo calendars (can wait for `5-build`):** design the 6 accounts' calendars to produce the "no perfect slot" case, and decide which accounts are real Google accounts and which are seeded.
