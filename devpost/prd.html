@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendarly — Product Requirements</title>
+<style>
+  :root {
+    --bg:#f7f2e8; --surface:#fffdf8; --text:#2a2622; --muted:#6b635a; --line:#e6dcc9;
+    --accent:#b4532a; --accent-soft:#f6e3d8;
+    --yes:#2f7d4f; --yes-soft:#e0f1e5; --maybe:#a96a00; --maybe-soft:#fbefd2; --no:#6b635a; --no-soft:#ece6da;
+    --serif: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1d1a17; --surface:#26221e; --text:#f1ebe0; --muted:#b2a898; --line:#3a342d;
+      --accent:#e8895f; --accent-soft:#3d2a20; --yes:#6fcf93; --yes-soft:#1d3527; --maybe:#f0b95b; --maybe-soft:#3b2f15; --no:#b2a898; --no-soft:#332e27; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 var(--sans)}
+  main{max-width:900px;margin:0 auto;padding:32px 16px 72px}
+  h1,h2,h3{font-family:var(--serif);font-weight:700;line-height:1.2}
+  h1{font-size:2.2rem;margin:10px 0 6px} h2{font-size:1.35rem;margin:0 0 10px} h3{font-size:1.05rem;margin:14px 0 6px}
+  .tag{display:inline-block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:3px 10px;border-radius:99px}
+  .lead{color:var(--muted);font-size:1.08rem}
+  section{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-top:18px}
+  .compare{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+  .compare div{border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .compare .was{background:var(--no-soft)} .compare .now{background:var(--accent-soft)}
+  .compare b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px}
+  svg{width:100%;height:auto;display:block}
+  svg text{fill:var(--text);font:12.5px var(--sans)}
+  svg .lane{fill:var(--bg);stroke:var(--line)} svg .laneTitle{font:700 12px var(--sans);fill:var(--muted);letter-spacing:.06em}
+  svg .box{fill:var(--surface);stroke:var(--accent);stroke-width:1.5} svg .box.ai{fill:var(--accent-soft);stroke-width:2.5}
+  svg .arrow{stroke:var(--muted);stroke-width:1.5;fill:none;marker-end:url(#ah)}
+  svg .small{fill:var(--muted);font-size:10.5px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 14px}
+  .tabs button{font:600 14px var(--sans);padding:8px 14px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}
+  .tabs button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .panel[hidden]{display:none}
+  .mock{border:1px dashed var(--line);border-radius:10px;padding:14px;background:var(--bg);margin:10px 0}
+  .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line)} .row:last-child{border:0}
+  .row .when{flex:1 1 180px;font-weight:600}
+  .chip{font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px}
+  .chip.yes{background:var(--yes-soft);color:var(--yes)} .chip.maybe{background:var(--maybe-soft);color:var(--maybe)} .chip.no{background:var(--no-soft);color:var(--no)}
+  .note{background:var(--bg);border-left:4px solid var(--accent);border-radius:6px;padding:10px 14px;font-family:var(--serif);font-style:italic}
+  details{border:1px solid var(--line);border-radius:10px;margin:8px 0;overflow:hidden}
+  summary{cursor:pointer;padding:10px 14px;font-weight:600;list-style:none;display:flex;gap:8px}
+  summary::-webkit-details-marker{display:none} summary::after{content:"+";margin-left:auto;color:var(--muted)} details[open] summary::after{content:"–"}
+  details ul{margin:0;padding:2px 18px 12px 34px} li{margin:4px 0}
+  .crit li{list-style:none;margin-left:-18px} .crit li::before{content:"☐ ";color:var(--accent)}
+  .assume{font-size:12px;color:var(--maybe);font-weight:700}
+  .cols{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  footer{color:var(--muted);font-size:.85rem;margin-top:24px}
+  @media(max-width:560px){.compare{grid-template-columns:1fr} h1{font-size:1.7rem} section{padding:16px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <span class="tag">PRD · draft</span>
+  <h1>Calendarly</h1>
+  <p class="lead">A standalone, calendar-aware poll for a consultancy lead scheduling with external parties. An AI reads plain-language constraints and availability and explains the trade-offs.</p>
+</header>
+
+<section>
+  <h2>From scope to specifics</h2>
+  <div class="compare">
+    <div class="was"><b>Scope said</b>"Guests need no account… the AI may add slots… the organizer sees a ranking with reasons."</div>
+    <div class="now"><b>Now we know</b>A Doodle-style form (name, email, yes / prefer not / no), a plain-language box near the end, a "what I understood" confirmation, and a dashboard with people, votes per slot, and an AI note on the best and worst options.</div>
+  </div>
+</section>
+
+<section>
+  <h2>The core journey</h2>
+  <svg viewBox="0 0 860 380" role="img" aria-labelledby="jt jd">
+    <title id="jt">Calendarly core journey</title>
+    <desc id="jd">Three lanes: organizer, guest, and AI. The organizer creates a poll in plain language and shares a link. A guest fills the form and may type availability, which the AI interprets and the guest confirms. The AI adds slots only where the organizer is free. The organizer sees the dashboard and picks a slot, and the event and confirmation email go out.</desc>
+    <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a8073"/></marker></defs>
+    <rect class="lane" x="4" y="4" width="852" height="110" rx="10"/><text class="laneTitle" x="14" y="22">ORGANIZER</text>
+    <rect class="lane" x="4" y="124" width="852" height="110" rx="10"/><text class="laneTitle" x="14" y="142">GUEST (NO ACCOUNT)</text>
+    <rect class="lane" x="4" y="244" width="852" height="130" rx="10"/><text class="laneTitle" x="14" y="262">AI AND SYSTEM</text>
+    <rect class="box" x="20" y="38" width="150" height="62" rx="9"/><text x="95" y="62" text-anchor="middle">1 Describe the meeting</text><text class="small" x="95" y="80" text-anchor="middle">plain language</text>
+    <rect class="box" x="195" y="38" width="150" height="62" rx="9"/><text x="270" y="62" text-anchor="middle">2 Check and share link</text><text class="small" x="270" y="80" text-anchor="middle">options from free time</text>
+    <rect class="box" x="195" y="158" width="150" height="62" rx="9"/><text x="270" y="182" text-anchor="middle">3 Fill in the form</text><text class="small" x="270" y="200" text-anchor="middle">name · email · yes/prefer not/no</text>
+    <rect class="box" x="385" y="158" width="150" height="62" rx="9"/><text x="460" y="182" text-anchor="middle">4 Type availability</text><text class="small" x="460" y="200" text-anchor="middle">optional, near the end</text>
+    <rect class="box ai" x="385" y="276" width="150" height="62" rx="9"/><text x="460" y="298" text-anchor="middle">AI reads it</text><text class="small" x="460" y="316" text-anchor="middle">dates · times · timezone</text>
+    <rect class="box" x="575" y="158" width="130" height="62" rx="9"/><text x="640" y="182" text-anchor="middle">5 Confirm or correct</text><text class="small" x="640" y="200" text-anchor="middle">what I understood</text>
+    <rect class="box ai" x="575" y="276" width="150" height="62" rx="9"/><text x="650" y="298" text-anchor="middle">6 Add slots (max 3)</text><text class="small" x="650" y="316" text-anchor="middle">only where organizer is free</text>
+    <rect class="box" x="745" y="38" width="100" height="62" rx="9"/><text x="795" y="62" text-anchor="middle">7 Dashboard</text><text class="small" x="795" y="80" text-anchor="middle">votes + AI note</text>
+    <rect class="box" x="590" y="38" width="130" height="62" rx="9"/><text x="655" y="62" text-anchor="middle">8 Pick the slot</text><text class="small" x="655" y="80" text-anchor="middle">no auto-lock</text>
+    <rect class="box ai" x="20" y="276" width="330" height="62" rx="9"/><text x="185" y="298" text-anchor="middle">Event on organizer calendar + confirmation email</text><text class="small" x="185" y="316" text-anchor="middle">one-click add to calendar · earlier voters get "new options added"</text>
+    <path class="arrow" d="M170 69 H195"/><path class="arrow" d="M270 100 V158"/><path class="arrow" d="M345 189 H385"/><path class="arrow" d="M460 220 V276"/><path class="arrow" d="M535 307 L560 307 L575 195"/><path class="arrow" d="M640 220 V250 L650 276"/>
+    <path class="arrow" d="M725 307 L795 307 V100"/><path class="arrow" d="M745 69 H720"/><path class="arrow" d="M590 69 L350 69 L350 300"/>
+  </svg>
+  <p class="lead">Success is the "no perfect slot" demo: the AI explains the trade-off and adds slots from a guest's plain-language statement.</p>
+</section>
+
+<section>
+  <h2>Screens: step through each one</h2>
+  <div class="tabs" role="tablist" aria-label="Screens">
+    <button role="tab" aria-selected="true" aria-controls="p1" id="t1">1 Create poll</button>
+    <button role="tab" aria-selected="false" aria-controls="p2" id="t2">2 Guest form</button>
+    <button role="tab" aria-selected="false" aria-controls="p3" id="t3">3 What I understood</button>
+    <button role="tab" aria-selected="false" aria-controls="p4" id="t4">4 Dashboard</button>
+  </div>
+
+  <div class="panel" id="p1" role="tabpanel" aria-labelledby="t1">
+    <div class="mock"><em>"I want to meet with Tom and Jamie this week about our upcoming collaboration. Best to be afternoon meetings. Tom does not like meetings at night. My office hours are 9-5pm. Jamie works in the BST timezone 9-6pm."</em></div>
+    <p>The AI turns this into an editable poll: people, afternoon preference, 9–5 office hours, Tom avoiding nights, Jamie's hours in BST. The same box takes what clients told the organizer ("the client's CFO only does Tuesdays"). Initial options come from the organizer's free time.</p>
+    <details open><summary>Acceptance criteria</summary><ul class="crit"><li>The Tom/Jamie example produces all five constraints.</li><li>The organizer can edit what the AI understood before creating the poll.</li><li>Client-sourced constraints are accepted like the organizer's own.</li><li>Initial options are times the organizer's calendar shows as free.</li></ul></details>
+    <details><summary>States</summary><ul><li><span class="assume">(assumption)</span> First use: one prompt to describe the meeting, not an empty table.</li></ul></details>
+  </div>
+
+  <div class="panel" id="p2" role="tabpanel" aria-labelledby="t2" hidden>
+    <div class="mock">
+      <div class="row"><span class="when">Name · Email</span><span>pick your name, or type one</span></div>
+      <div class="row"><span class="when">Tue 14:00–15:00</span><span class="chip yes">✓ yes</span></div>
+      <div class="row"><span class="when">Wed 09:00–10:00</span><span class="chip maybe">~ prefer not</span></div>
+      <div class="row"><span class="when">Thu 16:00–17:00</span><span class="chip no">✕ no</span></div>
+      <div class="row"><span class="when">Optional</span><span>Connect Google Calendar</span></div>
+      <div class="row"><span class="when">Near the end</span><span><em>"Tuesday or Wednesday afternoons, not Mondays"</em></span></div>
+    </div>
+    <details open><summary>Acceptance criteria</summary><ul class="crit"><li>The link opens the form with no login.</li><li>Name and email are required to submit.</li><li>Each option can be marked yes, prefer not, or no.</li><li>After submit, I see a confirmation and the dashboard shows my votes.</li><li>If the organizer listed names, I can claim mine or type another.</li></ul></details>
+    <details><summary>States</summary><ul><li>Guest without a calendar: votes and stated availability only.</li><li>Calendar connection fails: that person is flagged and the ranking continues.</li><li><span class="assume">(assumption)</span> Returning with the same link shows my saved response.</li></ul></details>
+  </div>
+
+  <div class="panel" id="p3" role="tabpanel" aria-labelledby="t3" hidden>
+    <div class="mock">
+      <p class="note">You said: "Tuesday or Wednesday afternoons, not Mondays". I understood: Tue 21 and Wed 22 Oct, 13:00–17:00, your timezone (London, BST).</p>
+      <div class="row"><span class="chip yes">Looks right</span><span class="chip no">Correct it</span></div>
+    </div>
+    <details open><summary>Acceptance criteria</summary><ul class="crit"><li>Dates, times, and the guest's timezone are shown before anything is added.</li><li>The guest can confirm or correct.</li><li>Only slots the organizer's calendar shows as free are added.</li><li>It works without a connected calendar.</li></ul></details>
+    <details><summary>States</summary><ul><li>AI misreads: the guest corrects it; nothing is added until confirmed.</li><li><span class="assume">(assumption)</span> No matching free time: the guest is told nothing could be added.</li><li><span class="assume">(assumption)</span> Cap of 3 reached: the guest is told their statement was received.</li></ul></details>
+  </div>
+
+  <div class="panel" id="p4" role="tabpanel" aria-labelledby="t4" hidden>
+    <div class="mock">
+      <p class="note">Best: Tue 14:00. Everyone can make it, and it's inside Jamie's 9–6 BST day. Not great: Wed 09:00, since Tom prefers not and Jamie is outside hours. Based on 2 connected calendars, 2 votes, and 1 stated availability.</p>
+      <div class="row"><span class="when">Tom ✓ calendar</span><span class="chip yes">yes</span><span class="chip maybe">prefer not</span><span class="chip no">no</span></div>
+      <div class="row"><span class="when">Jamie – no calendar</span><span class="chip yes">yes</span><span class="chip no">no</span><span class="chip yes">yes</span></div>
+    </div>
+    <details open><summary>Acceptance criteria</summary><ul class="crit"><li>People list shows names and who connected a calendar.</li><li>Votes per time slot are visible; AI-added slots are marked.</li><li>The summary names the best and the not-best options and the trade-off.</li><li>Every explanation states its basis.</li><li>Picking a slot creates the event on the organizer's calendar and sends the confirmation email.</li></ul></details>
+    <details><summary>States</summary><ul><li>No perfect slot: the AI says so, shows the options with the most people available, and explains the trade-off.</li></ul></details>
+  </div>
+</section>
+
+<section>
+  <h2>Look and feel</h2>
+  <div class="cols">
+    <div><h3>Warm planner</h3><p>Off-white paper background, a characterful serif for headings, a plain sans for body text. This page uses that direction.</p></div>
+    <div><h3>Availability signals</h3><p><span class="chip yes">✓ yes</span> <span class="chip maybe">~ prefer not</span> <span class="chip no">✕ no</span> Color plus an icon, never color alone.</p></div>
+    <div><h3>Easy for beginners</h3><p>A short list of times, not a calendar grid. Visible confirmation after each choice. The AI note reads like a colleague's message.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>Now, deferred, and open</h2>
+  <details open><summary>What we're building</summary><ul><li>Organizer login, calendar connection, plain-language poll creation.</li><li>Shareable link and Doodle-style guest form.</li><li>Guest plain-language availability with confirmation.</li><li>AI-added slots (max 3) within the organizer's free time.</li><li>Dashboard: people, votes per slot, AI summary, ranking with reasons.</li><li>Pick, event creation, confirmation email, "new options added" email.</li></ul></details>
+  <details><summary>Deferred</summary><ul><li>Saved roster and "meet again".</li><li>Outlook and Apple calendars; auto-lock voting; groups of 50+; monetization; native mobile.</li><li>Invitation emails sent by the app (see below).</li></ul></details>
+  <details open><summary>Open questions</summary><ul><li><strong>Before 4-spec:</strong> do invitation emails come from the app, or does the organizer only share the link?</li><li><strong>Assumption to confirm:</strong> "yes / prefer not / no" is one of three marks per option.</li><li>Relative phrases ("next week") and timezone anchoring; the AI-added slot cap; demo calendars; Google verification.</li></ul></details>
+</section>
+
+<footer>Names, dates, and votes in the screen mock-ups are illustrative. Generated from <code>devpost/prd.md</code>, which is the canonical version.</footer>
+</main>
+<script>
+(function(){
+  var tabs=[].slice.call(document.querySelectorAll('[role="tab"]'));
+  function show(t){
+    tabs.forEach(function(b){
+      var on=b===t; b.setAttribute('aria-selected',on);
+      document.getElementById(b.getAttribute('aria-controls')).hidden=!on;
+    });
+  }
+  tabs.forEach(function(b,i){
+    b.addEventListener('click',function(){show(b)});
+    b.addEventListener('keydown',function(e){
+      if(e.key==='ArrowRight'){var n=tabs[(i+1)%tabs.length];n.focus();show(n)}
+      if(e.key==='ArrowLeft'){var p=tabs[(i+tabs.length-1)%tabs.length];p.focus();show(p)}
+    });
+  });
+})();
+</script>
+</body>
+</html>
