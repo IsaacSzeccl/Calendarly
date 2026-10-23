@@ -101,7 +101,7 @@
   <div class="grid">
     <section>
       <h2>Who it's for</h2>
-      <p>A consultancy lead scheduling a workshop with about 6 people at a client company. Today they run email ping-pong or a Doodle poll. Internal meetings get one line of mention only; family and friends move to Later.</p>
+      <p><strong>The coaching story.</strong> In a student coach program, the main coach had to arrange a meeting with 20 student coaches. Doodle, WhatsApp votes, and Google Calendar scheduling later, people kept asking for more timeslots "because of this, because of that".</p><p><strong>Second example:</strong> friends and group scheduling (group projects, societies, gatherings), usually 7–8 people. The organizer is anyone who coordinates a group; guests are its members.</p>
     </section>
     <section>
       <h2>Inspiration &amp; identity</h2>
@@ -111,15 +111,15 @@
 
   <section>
     <h2>What "working" looks like</h2>
-    <p>A demo video that tells the consultancy story, with a before-and-after: a real email ping-pong thread versus the same task in Calendarly. The centerpiece is the <strong>"no perfect slot"</strong> case: the AI explains the trade-off and adds slots from a guest's plain-language statement.</p>
+    <p>The pitch tells the coaching story at 20 people. The demo video includes a before-and-after: a group-chat and poll back-and-forth versus the same task in Calendarly <em>(assumption)</em>. The centerpiece is the <strong>"no perfect slot"</strong> case: the AI explains the trade-off and adds slots from a guest's plain-language statement.</p>
     <ol class="steps">
-      <li>The organizer creates a poll with constraints (their own plus what clients told them) and shares the link.</li>
+      <li>The organizer creates a poll with constraints (their own plus the group's) and shares the link themselves, in any channel.</li>
       <li>One guest votes without logging in; one connects a calendar; one states availability in plain language and confirms what the AI understood.</li>
       <li><strong>The "oh, that's cool" beat:</strong> the AI adds slots where the organizer's calendar is free and explains the trade-off.</li>
       <li>An earlier voter is notified by email.</li>
       <li>The organizer picks a slot, and the event and confirmation email go out.</li>
     </ol>
-    <p class="note">Real Google test accounts are used wherever possible. The demo uses 4-5 accounts, with calendars designed to reflect complicated client agreements. Any seeded or fake accounts are labeled honestly.</p>
+    <p class="note">Real Google test accounts are used wherever possible. The demo uses 4-5 accounts, with calendars designed to produce a "no perfect slot" case. Any seeded or fake accounts are labeled honestly. Built for groups like the 20-person one, but not claimed to be tested at 20.</p>
   </section>
 
   <section>
@@ -129,7 +129,7 @@
       <ul>
         <li>Google Calendar only.</li>
         <li>Organizer login, calendar connection, and poll creation with initial options from their free time.</li>
-        <li>Free-form constraints (the organizer's own plus what clients told them) parsed by the AI; poll details can be entered in plain language and the AI helps fill them in.</li>
+        <li>Free-form constraints (the organizer's own plus the group's) parsed by the AI; poll details can be entered in plain language and the AI helps fill them in.</li>
         <li>Shareable link; guests need no account, give an email address, and can vote, add a time, state availability in plain language, or optionally connect Google Calendar.</li>
         <li>Guest plain-language availability: the AI shows what it understood (dates, times, timezone) for confirmation, then adds only slots the organizer's calendar shows as free.</li>
         <li>Ranking with plain-language explanations that state their basis (calendars, votes, stated availability).</li>
@@ -141,7 +141,9 @@
       <summary><span class="pill">Later</span> Worth doing, not now</summary>
       <ul>
         <li>Outlook and Apple calendars.</li>
-        <li>Groups of 50+, and monetization.</li>
+        <li>Groups of 20 and larger (including 50+); the proof of concept is designed for 4–8 guests <em>(assumption)</em>.</li>
+        <li>Invitation emails from the app; the organizer shares the link themselves.</li>
+        <li>Monetization.</li>
         <li>Native mobile apps.</li>
         <li>Family-and-friends positioning.</li>
         <li>Saved roster and "meet again" for repeat meetings.</li>
@@ -161,7 +163,7 @@
   <section>
     <h2>Open items</h2>
     <ul>
-      <li><strong>Demo calendars:</strong> design the 4-5 demo accounts' calendars to reflect complicated client agreements.</li>
+      <li><strong>Demo calendars:</strong> design the 4-5 demo accounts' calendars to produce a "no perfect slot" case.</li>
       <li><strong>Relative phrases and timezone:</strong> how are "next week" and the guest's timezone confirmed? The guest confirms or corrects what the AI understood.</li>
       <li><strong>AI-added slot cap:</strong> keep 3, raise it, or apply it per source? Stays at 3 until decided.</li>
       <li><strong>Google verification:</strong> you will try to get the app verified. Review can take days to weeks and generally needs a public domain, a privacy policy, and a demo video, so it may not finish in time. Fallback: testing mode with listed test users.</li>

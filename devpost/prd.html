@@ -60,8 +60,14 @@
 <header>
   <span class="tag">PRD · draft</span>
   <h1>Calendarly</h1>
-  <p class="lead">A standalone, calendar-aware poll for a consultancy lead scheduling with external parties. An AI reads plain-language constraints and availability and explains the trade-offs.</p>
+  <p class="lead">A standalone, calendar-aware poll for anyone who coordinates a group (a coach, a society organizer, a project lead, someone planning a gathering). An AI reads plain-language constraints and availability and explains the trade-offs.</p>
 </header>
+
+<section>
+  <h2>The story</h2>
+  <p class="note">In a student coach program, the main coach had to arrange a meeting with 20 student coaches. We used Doodle, WhatsApp votes, and Google Calendar scheduling, and people kept asking for more timeslots "because of this, because of that".</p>
+  <p>The second example is friends and group scheduling (group projects, society members, gatherings), usually 7–8 people. The organizer is anyone who coordinates a group; guests are its members. The pitch uses 20 people; the demo uses 4–5 accounts and does not claim it was tested at 20.</p>
+</section>
 
 <section>
   <h2>From scope to specifics</h2>
@@ -107,9 +113,9 @@
 
   <div class="panel" id="p1" role="tabpanel" aria-labelledby="t1">
     <div class="mock"><em>"I want to meet with Tom and Jamie this week about our upcoming collaboration. Best to be afternoon meetings. Tom does not like meetings at night. My office hours are 9-5pm. Jamie works in the BST timezone 9-6pm."</em></div>
-    <p>The AI turns this into an editable poll: people, afternoon preference, 9–5 office hours, Tom avoiding nights, Jamie's hours in BST. The same box takes what clients told the organizer ("the client's CFO only does Tuesdays"). Initial options come from the organizer's free time.</p>
-    <details open><summary>Acceptance criteria</summary><ul class="crit"><li>The Tom/Jamie example produces all five constraints.</li><li>The organizer can edit what the AI understood before creating the poll.</li><li>Client-sourced constraints are accepted like the organizer's own.</li><li>Initial options are times the organizer's calendar shows as free.</li></ul></details>
-    <details><summary>States</summary><ul><li><span class="assume">(assumption)</span> First use: one prompt to describe the meeting, not an empty table.</li></ul></details>
+    <p>The AI turns this into an editable poll: people, afternoon preference, 9–5 office hours, Tom avoiding nights, Jamie's hours in BST. The same box takes constraints from the group ("Tom only does evenings because of work, and the coach can't do Tuesdays"). Initial options come from the organizer's free time.</p>
+    <details open><summary>Acceptance criteria</summary><ul class="crit"><li>The Tom/Jamie example produces all five constraints.</li><li>The organizer can edit what the AI understood before creating the poll.</li><li>Constraints from the group are accepted like the organizer's own.</li><li>Initial options are times the organizer's calendar shows as free.</li></ul></details>
+    <details><summary>States</summary><ul><li><span class="assume">(assumption)</span> First use: one prompt to describe the meeting, not an empty table.</li><li><span class="assume">(assumption)</span> No free time in the window: the organizer is asked to widen the dates or hours.</li></ul></details>
   </div>
 
   <div class="panel" id="p2" role="tabpanel" aria-labelledby="t2" hidden>
@@ -122,7 +128,7 @@
       <div class="row"><span class="when">Near the end</span><span><em>"Tuesday or Wednesday afternoons, not Mondays"</em></span></div>
     </div>
     <details open><summary>Acceptance criteria</summary><ul class="crit"><li>The link opens the form with no login.</li><li>Name and email are required to submit.</li><li>Each option can be marked yes, prefer not, or no.</li><li>After submit, I see a confirmation and the dashboard shows my votes.</li><li>If the organizer listed names, I can claim mine or type another.</li></ul></details>
-    <details><summary>States</summary><ul><li>Guest without a calendar: votes and stated availability only.</li><li>Calendar connection fails: that person is flagged and the ranking continues.</li><li><span class="assume">(assumption)</span> Returning with the same link shows my saved response.</li></ul></details>
+    <details><summary>States</summary><ul><li>Guest without a calendar: votes and stated availability only.</li><li>Calendar connection fails: that person is flagged and the ranking continues.</li><li><span class="assume">(assumption)</span> Returning with the same link shows my saved votes, which I can change until the organizer picks; afterwards I see the final time.</li><li>My email is used only for the "new options added" and confirmation emails.</li></ul></details>
   </div>
 
   <div class="panel" id="p3" role="tabpanel" aria-labelledby="t3" hidden>
@@ -131,7 +137,7 @@
       <div class="row"><span class="chip yes">Looks right</span><span class="chip no">Correct it</span></div>
     </div>
     <details open><summary>Acceptance criteria</summary><ul class="crit"><li>Dates, times, and the guest's timezone are shown before anything is added.</li><li>The guest can confirm or correct.</li><li>Only slots the organizer's calendar shows as free are added.</li><li>It works without a connected calendar.</li></ul></details>
-    <details><summary>States</summary><ul><li>AI misreads: the guest corrects it; nothing is added until confirmed.</li><li><span class="assume">(assumption)</span> No matching free time: the guest is told nothing could be added.</li><li><span class="assume">(assumption)</span> Cap of 3 reached: the guest is told their statement was received.</li></ul></details>
+    <details><summary>States</summary><ul><li>AI misreads: the guest corrects it; nothing is added until confirmed.</li><li><span class="assume">(assumption)</span> AI can't understand a statement: it says so, shows an example it can read, and asks the guest to rephrase.</li><li><span class="assume">(assumption)</span> No matching free time: the guest is told nothing could be added.</li><li><span class="assume">(assumption)</span> Cap of 3 reached: the guest is told their statement was received.</li></ul></details>
   </div>
 
   <div class="panel" id="p4" role="tabpanel" aria-labelledby="t4" hidden>
@@ -141,8 +147,13 @@
       <div class="row"><span class="when">Jamie – no calendar</span><span class="chip yes">yes</span><span class="chip no">no</span><span class="chip yes">yes</span></div>
     </div>
     <details open><summary>Acceptance criteria</summary><ul class="crit"><li>People list shows names and who connected a calendar.</li><li>Votes per time slot are visible; AI-added slots are marked.</li><li>The summary names the best and the not-best options and the trade-off.</li><li>Every explanation states its basis.</li><li>Picking a slot creates the event on the organizer's calendar and sends the confirmation email.</li></ul></details>
-    <details><summary>States</summary><ul><li>No perfect slot: the AI says so, shows the options with the most people available, and explains the trade-off.</li></ul></details>
+    <details><summary>States</summary><ul><li>No perfect slot: the AI says so, shows the options with the most people available, and explains the trade-off.</li><li><span class="assume">(assumption)</span> No responses yet: the share link with a copy button, and named people shown as waiting.</li></ul></details>
   </div>
+</section>
+
+<section>
+  <h2>Demo and success</h2>
+  <ul><li>The pitch tells the coaching story at 20 people; the demo uses 4–5 accounts with calendars designed to produce a "no perfect slot" case. Seeded accounts are labeled honestly.</li><li>Centerpiece: the AI explains the trade-off and adds slots from a guest's plain-language statement.</li><li>Path: describe the meeting, share the link yourself, a guest votes, one connects a calendar, one types availability and confirms it, the AI adds slots, an earlier voter is emailed, the organizer picks, and the event and confirmation email go out.</li></ul>
 </section>
 
 <section>
@@ -157,8 +168,8 @@
 <section>
   <h2>Now, deferred, and open</h2>
   <details open><summary>What we're building</summary><ul><li>Organizer login, calendar connection, plain-language poll creation.</li><li>Shareable link and Doodle-style guest form.</li><li>Guest plain-language availability with confirmation.</li><li>AI-added slots (max 3) within the organizer's free time.</li><li>Dashboard: people, votes per slot, AI summary, ranking with reasons.</li><li>Pick, event creation, confirmation email, "new options added" email.</li></ul></details>
-  <details><summary>Deferred</summary><ul><li>Saved roster and "meet again".</li><li>Outlook and Apple calendars; auto-lock voting; groups of 50+; monetization; native mobile.</li><li>Invitation emails sent by the app (see below).</li></ul></details>
-  <details open><summary>Open questions</summary><ul><li><strong>Before 4-spec:</strong> do invitation emails come from the app, or does the organizer only share the link?</li><li><strong>Assumption to confirm:</strong> "yes / prefer not / no" is one of three marks per option.</li><li>Relative phrases ("next week") and timezone anchoring; the AI-added slot cap; demo calendars; Google verification.</li></ul></details>
+  <details><summary>Deferred</summary><ul><li>Saved roster and "meet again".</li><li>Outlook and Apple calendars; auto-lock voting; monetization; native mobile.</li><li>Groups of 20 and larger (including 50+); the proof of concept is designed for 4–8 guests <span class="assume">(assumption)</span>.</li><li>Invitation emails sent by the app: the organizer shares the link in their own channel.</li></ul></details>
+  <details open><summary>Open questions</summary><ul><li><strong>Assumptions to confirm:</strong> one mark per option, with "prefer not" weighed between "yes" and "no"; the states marked (assumption); the 4–8 guest design target.</li><li><strong>Group size check:</strong> the ranking and dashboard need a check at 20 people before claiming that size.</li><li>Relative phrases ("next week") and timezone anchoring; the AI-added slot cap; demo calendars; Google verification.</li></ul></details>
 </section>
 
 <footer>Names, dates, and votes in the screen mock-ups are illustrative. Generated from <code>devpost/prd.md</code>, which is the canonical version.</footer>
