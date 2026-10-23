@@ -9,7 +9,7 @@ A standalone, calendar-aware poll for anyone who coordinates a group (a coach, a
 Source: `scope.md > The Unique Kernel`, `scope.md > Who It's For`. The fuller requirement list lives in the Claude Docs PRD "Calendarly — AI Scheduling Assistant for External Meetings — PRD" (https://claude.ai/artifact/RSgq4P4hw7c9WK8J7xvcyQ). This file is the build-facing version of it, and `scope.md` wins on any conflict about what is in the proof of concept.
 
 ## The Story
-**The coaching story (leads the pitch).** In a student coach program, the main coach had to arrange a meeting with 20 student coaches. We used Doodle, WhatsApp votes, and Google Calendar scheduling, and people kept asking for more timeslots "because of this, because of that".
+**The coaching story (leads the pitch).** In a student coach program, the main coach had to arrange a meeting with a group of student coaches. The pitch and the demo use the same size: a coach and 5 student coaches, 6 people *(assumption)*. We used Doodle, WhatsApp votes, and Google Calendar scheduling, and people kept asking for more timeslots "because of this, because of that".
 
 **The second example** is friends and group scheduling: group projects, society members, and friend gatherings, usually 7–8 people.
 
@@ -137,16 +137,16 @@ States marked *(assumption)* were not stated by the learner. They are the obviou
 - **Only slots the organizer's calendar shows as free** can be added.
 - **A guest confirms what the AI understood** before slots are added.
 - **Cap of 3 AI-added slots** kept until decided.
-- **Google Calendar only; 4–5 demo accounts** with calendars designed to produce a "no perfect slot" case. Seeded accounts are labeled honestly.
-- **The pitch tells the coaching story at 20 people; the demo uses 4–5 accounts.** The product is described as built for groups like these, and is not claimed to be tested at 20.
+- **Google Calendar only; 6 demo accounts (the organizer and 5 guests)** *(assumption)* with calendars designed to produce a "no perfect slot" case. Seeded accounts are labeled honestly.
+- **The pitch tells the coaching story at the demo's size: a coach and 5 student coaches, 6 people** *(assumption)*. The product is not claimed to be tested on larger groups.
 - **Design target: 4–8 guests for the proof of concept** *(assumption)*.
 - **"yes / prefer not / no" is one mark per option, and the ranking weighs "prefer not" below "yes" and above "no"** *(assumption)*. The exact weighting is for `4-spec`.
 - **The roster and "meet again" go to Later.**
 - **Warm "planner" look and feel** — agreed by the learner.
 
 ## Demo and Success Criteria
-- **The pitch** leads with the coaching story: the main coach arranging a meeting with 20 student coaches over Doodle, WhatsApp votes, and Google Calendar scheduling, with people asking for more timeslots "because of this, because of that". The friends-and-group example (7–8 people) is the second example.
-- **The demo** uses 4–5 accounts whose calendars are designed to produce a "no perfect slot" case. Real Google test accounts are used wherever possible; seeded accounts are labeled honestly. The product is built for groups like the 20-person one, and the demo does not claim it was tested at 20.
+- **The pitch** leads with the coaching story: the main coach arranging a meeting with a group of student coaches over Doodle, WhatsApp votes, and Google Calendar scheduling, with people asking for more timeslots "because of this, because of that". The friends-and-group example (7–8 people) is the second example. The story is told at the demo's size: a coach and 5 student coaches, 6 people *(assumption)*.
+- **The demo** uses 6 accounts (the organizer and 5 guests) *(assumption)* whose calendars are designed to produce a "no perfect slot" case. Real Google test accounts are used wherever possible; seeded accounts are labeled honestly. The pitch story and the demo are the same size, and nothing is claimed about larger groups.
 - **Before-and-after video** *(assumption)*: a back-and-forth in a group chat and poll (Doodle and WhatsApp votes), versus the same task in Calendarly.
 - **Demo path:** the organizer describes the meeting with constraints from the group (for example "Tom only does evenings because of work, and the coach can't do Tuesdays"), shares the link themselves, one guest votes without logging in, one guest connects a calendar, one guest states availability in plain language and confirms what the AI understood, the AI adds slots where the organizer's calendar is free, an earlier voter is notified, the organizer picks a slot, and the event and confirmation email go out.
 - **Centerpiece:** the "no perfect slot" case, where the AI explains the trade-off and adds slots from a guest's plain-language statement.
@@ -185,10 +185,10 @@ Everything the proof of concept must do:
 - No auto-lock: the app never books a time without the organizer picking it.
 
 ## Open Questions
-- **Group size check (can wait for `5-build`):** the pitch uses 20 people, but the proof of concept is designed for 4–8 guests and demoed with 4–5. The ranking and dashboard need a check at 20 people before claiming the product handles that size.
+- **Group size check (can wait for `5-build`):** the proof of concept is designed for 4–8 guests and demoed with 6 people (the organizer and 5 guests). The ranking and dashboard need a check at 20 people (the size of the original coaching meeting) before claiming the product handles that size.
 - **Assumptions to confirm at review:** one mark per option with "prefer not" weighed between "yes" and "no"; the states marked *(assumption)* above; the 4–8 guest design target; the wording of the before-and-after video.
 - **Relative phrases and timezone (can wait for `4-spec`):** how "next week" and the guest's timezone are anchored and confirmed.
 - **AI-added slot cap (can wait):** keep 3, raise it, or apply it per source (calendar vs. statement). Stays at 3 until decided.
-- **Demo calendars (can wait for `5-build`):** design the 4–5 accounts' calendars to produce the "no perfect slot" case, and decide which accounts are real Google accounts and which are seeded.
+- **Demo calendars (can wait for `5-build`):** design the 6 accounts' calendars to produce the "no perfect slot" case, and decide which accounts are real Google accounts and which are seeded.
 - **Google verification (can wait):** applying may not finish before the deadline; the fallback is testing mode with listed test users.
 - **Scope vs. time:** this flow is larger than the 2–4 hours suggested for the course. Build order should put the end-to-end demo path first.
