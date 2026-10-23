@@ -65,57 +65,61 @@
   <header>
     <span class="tag">Scope · draft</span>
     <h1>Calendarly</h1>
-    <p class="lead">An AI scheduling assistant for one organizer who needs to find a time with many other people. The organizer asks in plain language, and the AI ranks the best slots from everyone's real calendars and explains why.</p>
+    <p class="lead">A standalone, calendar-aware poll for scheduling meetings with external parties. An AI reads the organizer's free-form constraints and explains the trade-offs between time slots.</p>
   </header>
 
   <section class="kernel">
     <h2>The unique kernel</h2>
-    <p><strong>Ask the AI, don't poll the group.</strong> The organizer says what they need ("an hour with these people next week, afternoons"). The AI reads everyone's free/busy status and returns ranked slots with plain-language reasons, so nobody has to vote and check their calendar every time. After people have joined, <strong>"meet again"</strong> is nearly one click, because the roster is saved and slots are proposed automatically.</p>
-    <p>Standalone, not a Teams add-on. Microsoft Teams' Scheduling Assistant is the main competitor, and Calendarly aims for the same power without the manual clicking. For SMEs the pain point is Doodle polls: slow, and repeated for every meeting.</p>
+    <p><strong>A hybrid poll that is calendar-aware.</strong> A guest with no account can just vote. A guest who connects Google Calendar gets matched on free/busy status. The organizer types constraints in plain language ("not Friday afternoons, Tom hates mornings, keep it under 90 minutes") and the AI turns them into ranking behavior and explains the trade-offs. Plain overlap is computed in code; the AI interprets and explains. The poll advises, and the organizer picks.</p>
+    <p>Standalone, with no Teams integration. Microsoft Teams' Scheduling Assistant is the main competitor and is strongest for internal scheduling. Calendarly targets external parties, where email ping-pong and Doodle polls are the pain.</p>
   </section>
 
   <section>
     <h2>The core loop</h2>
-    <svg viewBox="0 0 820 300" role="img" aria-labelledby="loopTitle loopDesc">
+    <svg viewBox="0 0 820 330" role="img" aria-labelledby="loopTitle loopDesc">
       <title id="loopTitle">Calendarly core loop</title>
-      <desc id="loopDesc">The organizer asks the AI, sends a link, invitees register and connect calendars, the AI ranks slots, the organizer picks one and the event is added to calendars. Meet again loops back with the roster saved.</desc>
+      <desc id="loopDesc">The organizer connects Google Calendar and creates a poll with optional constraints, shares a link, guests vote or connect a calendar, the AI may add slots, the organizer sees a ranking with explanations and picks a slot, and the event and confirmation email go out.</desc>
       <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a93a6"/></marker></defs>
-      <rect class="box" x="10" y="30" width="140" height="64" rx="10"/><text x="80" y="58" text-anchor="middle">1. Organizer asks</text><text class="small" x="80" y="76" text-anchor="middle">plain-language request</text>
-      <rect class="box" x="175" y="30" width="140" height="64" rx="10"/><text x="245" y="58" text-anchor="middle">2. Sends a link</text><text class="small" x="245" y="76" text-anchor="middle">invitees log in</text>
-      <rect class="box" x="340" y="30" width="140" height="64" rx="10"/><text x="410" y="58" text-anchor="middle">3. Connect calendar</text><text class="small" x="410" y="76" text-anchor="middle">free/busy only</text>
-      <rect class="box key" x="505" y="30" width="140" height="64" rx="10"/><text x="575" y="58" text-anchor="middle">4. AI ranks slots</text><text class="small" x="575" y="76" text-anchor="middle">with reasons</text>
-      <rect class="box" x="670" y="30" width="140" height="64" rx="10"/><text x="740" y="58" text-anchor="middle">5. Organizer picks</text><text class="small" x="740" y="76" text-anchor="middle">event added to calendars</text>
-      <path class="arrow" d="M150 62 H175"/><path class="arrow" d="M315 62 H340"/><path class="arrow" d="M480 62 H505"/><path class="arrow" d="M645 62 H670"/>
-      <rect class="box key" x="340" y="190" width="300" height="70" rx="10"/><text x="490" y="218" text-anchor="middle">6. "Meet again" with the same people</text><text class="small" x="490" y="238" text-anchor="middle">roster saved · slots proposed automatically</text>
-      <path class="arrow loop" d="M740 94 V225 H640"/>
-      <path class="arrow loop" d="M340 225 H80 V94"/>
-      <text class="small" x="95" y="180">skips steps 2–3</text>
+      <rect class="box" x="10" y="20" width="190" height="64" rx="10"/><text x="105" y="48" text-anchor="middle">1. Organizer creates poll</text><text class="small" x="105" y="66" text-anchor="middle">options from their free time</text>
+      <rect class="box" x="235" y="20" width="170" height="64" rx="10"/><text x="320" y="48" text-anchor="middle">2. Adds constraints</text><text class="small" x="320" y="66" text-anchor="middle">plain language (optional)</text>
+      <rect class="box" x="440" y="20" width="170" height="64" rx="10"/><text x="525" y="48" text-anchor="middle">3. Shares a link</text><text class="small" x="525" y="66" text-anchor="middle">guests need no account</text>
+      <rect class="box" x="645" y="10" width="165" height="38" rx="10"/><text x="727" y="34" text-anchor="middle">4a. Guest votes</text>
+      <rect class="box" x="645" y="58" width="165" height="38" rx="10"/><text x="727" y="82" text-anchor="middle">4b. Connects calendar</text>
+      <path class="arrow" d="M200 52 H235"/><path class="arrow" d="M405 52 H440"/><path class="arrow" d="M610 40 L645 29"/><path class="arrow" d="M610 64 L645 77"/>
+      <rect class="box key" x="440" y="150" width="200" height="64" rx="10"/><text x="540" y="178" text-anchor="middle">5. AI may add slots</text><text class="small" x="540" y="196" text-anchor="middle">max 3 · earlier voters emailed</text>
+      <path class="arrow" d="M727 96 V125 H540 V150"/>
+      <rect class="box key" x="235" y="150" width="170" height="64" rx="10"/><text x="320" y="178" text-anchor="middle">6. Ranking + reasons</text><text class="small" x="320" y="196" text-anchor="middle">states what it is based on</text>
+      <path class="arrow" d="M440 182 H405"/>
+      <rect class="box" x="10" y="150" width="190" height="64" rx="10"/><text x="105" y="178" text-anchor="middle">7. Organizer picks slot</text><text class="small" x="105" y="196" text-anchor="middle">no auto-lock</text>
+      <path class="arrow" d="M235 182 H200"/>
+      <rect class="box" x="10" y="250" width="400" height="56" rx="10"/><text x="210" y="274" text-anchor="middle">Event on organizer calendar + confirmation email</text><text class="small" x="210" y="292" text-anchor="middle">one-click add to calendar</text>
+      <path class="arrow" d="M105 214 V250"/>
     </svg>
-    <p>They come back because the second meeting costs almost nothing. The people are already registered, and the AI already knows their availability.</p>
+    <p>Poll advises, the organizer decides. A saved roster and "meet again" are an open decision (see below).</p>
   </section>
 
   <div class="grid">
     <section>
       <h2>Who it's for</h2>
-      <p>Someone who organizes meetings with many other people, such as a consultancy lead booking a client workshop, or anyone opening a meeting or a talk. Today they email people back and forth, run a Doodle poll, or post a poll in a messaging app, then chase replies.</p>
+      <p>A consultancy lead scheduling a workshop with about 6 people at a client company. Today they run email ping-pong or a Doodle poll. Internal meetings get one line of mention only; family and friends move to Later.</p>
     </section>
     <section>
       <h2>Inspiration &amp; identity</h2>
-      <p><a href="https://doodle.com">Doodle</a> for simplicity, and Microsoft Teams' Scheduling Assistant for power. The feel is extremely easy for beginners: nobody should get stuck or feel put off.</p>
+      <p><a href="https://doodle.com">Doodle</a> for simple polls with no account, and Microsoft Teams' Scheduling Assistant as the competitor. The feel is extremely easy for beginners: guests respond from a link.</p>
     </section>
   </div>
 
   <section>
     <h2>What "working" looks like</h2>
+    <p>A demo video that tells the consultancy story, with a before-and-after: a real email ping-pong thread versus the same task in Calendarly.</p>
     <ol class="steps">
-      <li>The organizer asks the AI for a meeting.</li>
-      <li>They send a link, and invitees log in and register.</li>
-      <li>The AI auto-matches everyone's calendars.</li>
-      <li>The organizer sees a ranking with reasons and picks a slot.</li>
-      <li>The event is added to the real calendar automatically.</li>
-      <li><strong>The "oh, that's cool" beat:</strong> the organizer starts a new meeting with the same people, and the roster is already there with timeslots proposed.</li>
+      <li>The organizer creates a poll and constraints, and shares the link.</li>
+      <li>One guest votes without logging in; one guest connects a calendar.</li>
+      <li><strong>The "oh, that's cool" beat:</strong> the AI adds a slot and explains the trade-off.</li>
+      <li>An earlier voter is notified by email.</li>
+      <li>The organizer picks a slot, and the event and confirmation email go out.</li>
     </ol>
-    <p class="note">Demo setup: one real Google account. The other 5–6 invitees are hosted fakes with seeded free/busy data, so ranking runs on realistic calendars and the event write-back shows live only on the real account.</p>
+    <p class="note">Real Google test accounts are used wherever possible. Any seeded or fake accounts are labeled honestly. How many are real is still to be decided.</p>
   </section>
 
   <section>
@@ -124,33 +128,42 @@
       <summary><span class="pill">Now</span> In the proof of concept</summary>
       <ul>
         <li>Google Calendar only.</li>
-        <li>Plain-language request from the organizer to the AI.</li>
-        <li>Shareable invite link; invitees log in, register, and connect a calendar.</li>
-        <li>Free/busy matching and ranking with plain-language reasons, including slots where most people are free.</li>
-        <li>The organizer picks the slot directly, and the event is written to the real calendar.</li>
-        <li>Saved roster and "meet again" with automatic timeslot proposals.</li>
-        <li>A simple, beginner-friendly interface.</li>
+        <li>Organizer login, calendar connection, and poll creation with initial options from their free time.</li>
+        <li>Free-form constraints parsed by the AI.</li>
+        <li>Shareable link; guests need no account and can vote, add a time, or optionally connect Google Calendar.</li>
+        <li>Ranking with plain-language explanations that state their basis.</li>
+        <li>AI-added slots (at most 3 per poll) and the "new options added" email.</li>
+        <li>Organizer picks directly; event on their calendar; confirmation email with add-to-calendar link.</li>
       </ul>
     </details>
     <details class="later">
       <summary><span class="pill">Later</span> Worth doing, not now</summary>
       <ul>
-        <li>Group voting as an alternative to the organizer picking.</li>
-        <li>Vote-only mode for people who don't connect a calendar (Doodle-style).</li>
-        <li>Microsoft Outlook and Apple calendars.</li>
-        <li>Email notifications.</li>
-        <li>Monetization, and groups of 50+.</li>
+        <li>Outlook and Apple calendars.</li>
+        <li>Groups of 50+, and monetization.</li>
+        <li>Native mobile apps.</li>
+        <li>Family-and-friends positioning.</li>
+        <li>Saved roster and "meet again" (pending the decision below).</li>
       </ul>
     </details>
     <details class="cut">
       <summary><span class="pill">Cut</span> Left out, with reasons</summary>
       <ul>
         <li><strong>Teams integration:</strong> you chose standalone so it can be monetized later.</li>
-        <li><strong>Multiple calendar providers:</strong> each is its own OAuth setup and set of bugs, too much for the time available.</li>
-        <li><strong>Voting and vote-only mode:</strong> the organizer picking directly is the recommended path and enough to prove the kernel.</li>
-        <li><strong>Real calendars for the fake invitees:</strong> the demo uses seeded data.</li>
+        <li><strong>Auto-lock voting:</strong> the poll advises, and the organizer picks directly.</li>
+        <li><strong>AI-generated alternative meeting lengths:</strong> the AI may mention a different length but doesn't generate new-length slots.</li>
+        <li><strong>Other calendar providers:</strong> each is its own OAuth setup and set of bugs.</li>
       </ul>
     </details>
+  </section>
+
+  <section>
+    <h2>Open decisions</h2>
+    <ul>
+      <li><strong>Saved roster and "meet again"</strong> was the kernel in the earlier draft. The new flow is larger. Recommendation: move it to Later.</li>
+      <li><strong>How many demo accounts are real Google accounts?</strong></li>
+      <li><strong>Earlier request form</strong> (title, duration category, timeframe): does it still apply, or do free-form constraints cover it?</li>
+    </ul>
   </section>
 
   <section>
