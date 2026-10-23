@@ -19,9 +19,9 @@ A consultancy lead scheduling a workshop with about 6 people at a client company
 
 ## The Core Loop
 1. The organizer logs in, connects Google Calendar, and creates a poll. The initial options come from their free time.
-2. They optionally type free-form constraints.
+2. They optionally type free-form constraints. Poll details can also be entered in plain language, and the AI helps fill them in.
 3. They share a link. Guests need no account.
-4. Each guest either votes on the options (or adds a time they can do), or optionally connects Google Calendar so free/busy is matched against the options.
+4. Each guest gives an email address and either votes on the options (or adds a time they can do), or optionally connects Google Calendar so free/busy is matched against the options.
 5. The AI may add up to 3 new slots when connected guests' availability shows better options. Earlier voters get a "new options added" email.
 6. The organizer sees a ranking with plain-language explanations that say what they are based on ("based on 3 connected calendars and 2 votes") and picks the final slot directly. There is no auto-lock.
 7. The event is created on the organizer's calendar, and guests get a confirmation email with a one-click "add to calendar" link.
@@ -41,21 +41,22 @@ Demo path: the organizer creates a poll and constraints, shares the link, one gu
 
 The "oh, that's cool" beat is the AI adding a slot and explaining the trade-off.
 
-Real Google test accounts are used wherever possible; any seeded or fake accounts are labeled honestly.
+The demo uses 4-5 accounts, real Google test accounts wherever possible, with calendars designed to reflect complicated client agreements. Any seeded or fake accounts are labeled honestly.
 
 ## The POC Boundary
 - Google Calendar only.
 - Organizer login, calendar connection, and poll creation with initial options from their free time.
 - Free-form constraints parsed by the AI.
-- A shareable link with guests who need no account: vote, add a time, or optionally connect Google Calendar.
+- A shareable link with guests who need no account (they give an email address): vote, add a time, or optionally connect Google Calendar.
 - Ranking with plain-language explanations that state their basis.
 - AI-added slots (at most 3 per poll) and the "new options added" email.
 - The organizer picks the slot directly, the event is created on their calendar, and a confirmation email goes out with an add-to-calendar link.
 
-## Open Decisions
-- **Saved roster and "meet again":** this was the kernel in the earlier scope draft. The new flow is larger. Keep it in this build, or move it to Later? Not decided yet. Recommendation: move it to Later, since the new flow already covers guest voting without accounts, AI-added slots, and two kinds of email.
-- **How many demo accounts are real Google accounts?** Not decided yet.
-- **Earlier request form** (title, duration category, rough timeframe): not in the new brief. Does it still apply, or are duration and timeframe covered by free-form constraints?
+## Open Items
+- **Demo calendars:** design the 4-5 demo accounts' calendars to reflect complicated client agreements. This is to be done with Claude, and each account is real or seeded as needed.
+- **Google verification:** the learner will try to get the app verified. Review can take days to weeks and generally needs a public domain, a privacy policy, and a demo video of the consent flow, so it may not finish before the deadline. The fallback is testing mode with listed test users.
+
+Decided: the saved roster and "meet again" move to Later, and the earlier request form is replaced by free-form constraints with AI-assisted plain-language entry.
 
 ## Later
 - Outlook and Apple calendars.
@@ -63,7 +64,7 @@ Real Google test accounts are used wherever possible; any seeded or fake account
 - Monetization.
 - Native mobile apps.
 - Family-and-friends positioning.
-- Saved roster and "meet again" (pending the decision above).
+- Saved roster and "meet again" for repeat meetings with the same people.
 
 ## Explicitly Cut
 - **Teams integration:** the learner chose a standalone product so it can be monetized later.
