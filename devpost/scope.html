@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendarly — Scope</title>
+<style>
+  :root {
+    --bg: #f6f7fb; --surface: #ffffff; --text: #1b1f2a; --muted: #5b6475;
+    --line: #e2e6ef; --accent: #4f46e5; --accent-soft: #eceafd;
+    --now: #0f9d6b; --now-soft: #e3f6ee; --later: #b7791f; --later-soft: #fdf3dc;
+    --cut: #c53030; --cut-soft: #fde8e8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12141b; --surface: #1b1e28; --text: #eceef4; --muted: #9aa3b5;
+      --line: #2c3040; --accent: #8b85ff; --accent-soft: #272555;
+      --now: #34d399; --now-soft: #12352a; --later: #f6ad55; --later-soft: #3a2d12;
+      --cut: #fc8181; --cut-soft: #3b1c1c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  header .tag { display: inline-block; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent); background: var(--accent-soft); padding: 3px 10px; border-radius: 99px; }
+  h1 { margin: 12px 0 6px; font-size: 2.1rem; line-height: 1.15; }
+  .lead { color: var(--muted); font-size: 1.1rem; margin: 0 0 8px; }
+  section { background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 20px 22px; margin-top: 18px; }
+  h2 { margin: 0 0 10px; font-size: 1.1rem; }
+  p { margin: 8px 0; }
+  .kernel { border-left: 4px solid var(--accent); }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  svg { width: 100%; height: auto; display: block; }
+  svg text { fill: var(--text); font: 13px system-ui, sans-serif; }
+  svg .box { fill: var(--surface); stroke: var(--accent); stroke-width: 1.5; }
+  svg .box.key { fill: var(--accent-soft); stroke-width: 2.5; }
+  svg .arrow { stroke: var(--muted); stroke-width: 1.5; fill: none; marker-end: url(#ah); }
+  svg .loop { stroke: var(--accent); stroke-dasharray: 5 4; }
+  svg .small { fill: var(--muted); font-size: 11px; }
+  .steps { margin: 0; padding-left: 1.2rem; }
+  .steps li { margin: 4px 0; }
+  details { border: 1px solid var(--line); border-radius: 10px; margin: 10px 0; overflow: hidden; }
+  summary { cursor: pointer; padding: 11px 14px; font-weight: 600; list-style: none;
+    display: flex; align-items: center; gap: 10px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; margin-left: auto; color: var(--muted); font-size: 1.2rem; }
+  details[open] summary::after { content: "–"; }
+  details ul { margin: 0; padding: 4px 18px 14px 34px; }
+  details li { margin: 5px 0; }
+  .pill { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 99px; text-transform: uppercase; letter-spacing: .06em; }
+  .now > summary { background: var(--now-soft); } .now .pill { background: var(--now); color: #fff; }
+  .later > summary { background: var(--later-soft); } .later .pill { background: var(--later); color: #fff; }
+  .cut > summary { background: var(--cut-soft); } .cut .pill { background: var(--cut); color: #fff; }
+  .note { background: var(--later-soft); border-radius: 10px; padding: 10px 14px; font-size: .95rem; }
+  a { color: var(--accent); }
+  footer { color: var(--muted); font-size: .85rem; margin-top: 24px; }
+  @media (max-width: 480px) { h1 { font-size: 1.7rem; } section { padding: 16px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="tag">Scope · draft</span>
+    <h1>Calendarly</h1>
+    <p class="lead">An AI scheduling assistant for one organizer who needs to find a time with many other people. The organizer asks in plain language, and the AI ranks the best slots from everyone's real calendars and explains why.</p>
+  </header>
+
+  <section class="kernel">
+    <h2>The unique kernel</h2>
+    <p><strong>Ask the AI, don't poll the group.</strong> The organizer says what they need ("an hour with these people next week, afternoons"). The AI reads everyone's free/busy status and returns ranked slots with plain-language reasons, so nobody has to vote and check their calendar every time. After people have joined, <strong>"meet again"</strong> is nearly one click, because the roster is saved and slots are proposed automatically.</p>
+    <p>Standalone, not a Teams add-on. Microsoft Teams' Scheduling Assistant is the main competitor, and Calendarly aims for the same power without the manual clicking. For SMEs the pain point is Doodle polls: slow, and repeated for every meeting.</p>
+  </section>
+
+  <section>
+    <h2>The core loop</h2>
+    <svg viewBox="0 0 820 300" role="img" aria-labelledby="loopTitle loopDesc">
+      <title id="loopTitle">Calendarly core loop</title>
+      <desc id="loopDesc">The organizer asks the AI, sends a link, invitees register and connect calendars, the AI ranks slots, the organizer picks one and the event is added to calendars. Meet again loops back with the roster saved.</desc>
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a93a6"/></marker></defs>
+      <rect class="box" x="10" y="30" width="140" height="64" rx="10"/><text x="80" y="58" text-anchor="middle">1. Organizer asks</text><text class="small" x="80" y="76" text-anchor="middle">plain-language request</text>
+      <rect class="box" x="175" y="30" width="140" height="64" rx="10"/><text x="245" y="58" text-anchor="middle">2. Sends a link</text><text class="small" x="245" y="76" text-anchor="middle">invitees log in</text>
+      <rect class="box" x="340" y="30" width="140" height="64" rx="10"/><text x="410" y="58" text-anchor="middle">3. Connect calendar</text><text class="small" x="410" y="76" text-anchor="middle">free/busy only</text>
+      <rect class="box key" x="505" y="30" width="140" height="64" rx="10"/><text x="575" y="58" text-anchor="middle">4. AI ranks slots</text><text class="small" x="575" y="76" text-anchor="middle">with reasons</text>
+      <rect class="box" x="670" y="30" width="140" height="64" rx="10"/><text x="740" y="58" text-anchor="middle">5. Organizer picks</text><text class="small" x="740" y="76" text-anchor="middle">event added to calendars</text>
+      <path class="arrow" d="M150 62 H175"/><path class="arrow" d="M315 62 H340"/><path class="arrow" d="M480 62 H505"/><path class="arrow" d="M645 62 H670"/>
+      <rect class="box key" x="340" y="190" width="300" height="70" rx="10"/><text x="490" y="218" text-anchor="middle">6. "Meet again" with the same people</text><text class="small" x="490" y="238" text-anchor="middle">roster saved · slots proposed automatically</text>
+      <path class="arrow loop" d="M740 94 V225 H640"/>
+      <path class="arrow loop" d="M340 225 H80 V94"/>
+      <text class="small" x="95" y="180">skips steps 2–3</text>
+    </svg>
+    <p>They come back because the second meeting costs almost nothing. The people are already registered, and the AI already knows their availability.</p>
+  </section>
+
+  <div class="grid">
+    <section>
+      <h2>Who it's for</h2>
+      <p>Someone who organizes meetings with many other people, such as a consultancy lead booking a client workshop, or anyone opening a meeting or a talk. Today they email people back and forth, run a Doodle poll, or post a poll in a messaging app, then chase replies.</p>
+    </section>
+    <section>
+      <h2>Inspiration &amp; identity</h2>
+      <p><a href="https://doodle.com">Doodle</a> for simplicity, and Microsoft Teams' Scheduling Assistant for power. The feel is extremely easy for beginners: nobody should get stuck or feel put off.</p>
+    </section>
+  </div>
+
+  <section>
+    <h2>What "working" looks like</h2>
+    <ol class="steps">
+      <li>The organizer asks the AI for a meeting.</li>
+      <li>They send a link, and invitees log in and register.</li>
+      <li>The AI auto-matches everyone's calendars.</li>
+      <li>The organizer sees a ranking with reasons and picks a slot.</li>
+      <li>The event is added to the real calendar automatically.</li>
+      <li><strong>The "oh, that's cool" beat:</strong> the organizer starts a new meeting with the same people, and the roster is already there with timeslots proposed.</li>
+    </ol>
+    <p class="note">Demo setup: one real Google account. The other 5–6 invitees are hosted fakes with seeded free/busy data, so ranking runs on realistic calendars and the event write-back shows live only on the real account.</p>
+  </section>
+
+  <section>
+    <h2>Proof-of-concept boundary</h2>
+    <details class="now" open>
+      <summary><span class="pill">Now</span> In the proof of concept</summary>
+      <ul>
+        <li>Google Calendar only.</li>
+        <li>Plain-language request from the organizer to the AI.</li>
+        <li>Shareable invite link; invitees log in, register, and connect a calendar.</li>
+        <li>Free/busy matching and ranking with plain-language reasons, including slots where most people are free.</li>
+        <li>The organizer picks the slot directly, and the event is written to the real calendar.</li>
+        <li>Saved roster and "meet again" with automatic timeslot proposals.</li>
+        <li>A simple, beginner-friendly interface.</li>
+      </ul>
+    </details>
+    <details class="later">
+      <summary><span class="pill">Later</span> Worth doing, not now</summary>
+      <ul>
+        <li>Group voting as an alternative to the organizer picking.</li>
+        <li>Vote-only mode for people who don't connect a calendar (Doodle-style).</li>
+        <li>Microsoft Outlook and Apple calendars.</li>
+        <li>Email notifications.</li>
+        <li>Monetization, and groups of 50+.</li>
+      </ul>
+    </details>
+    <details class="cut">
+      <summary><span class="pill">Cut</span> Left out, with reasons</summary>
+      <ul>
+        <li><strong>Teams integration:</strong> you chose standalone so it can be monetized later.</li>
+        <li><strong>Multiple calendar providers:</strong> each is its own OAuth setup and set of bugs, too much for the time available.</li>
+        <li><strong>Voting and vote-only mode:</strong> the organizer picking directly is the recommended path and enough to prove the kernel.</li>
+        <li><strong>Real calendars for the fake invitees:</strong> the demo uses seeded data.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section>
+    <h2>Why this matters to you</h2>
+    <p>You find scheduling with many people hard, and you see a product you could monetize and grow users for later. It is also a chance to use your saved Claude Code extensions and agentic workflows to speed up the build, and to learn more about web stacks and AI.</p>
+  </section>
+
+  <footer>Generated from <code>devpost/scope.md</code>, which is the canonical version.</footer>
+</main>
+</body>
+</html>
