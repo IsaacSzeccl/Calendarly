@@ -16,13 +16,44 @@ function describeRule(c: Constraint): string {
   return c.strength === "hard" ? "Must" : "Preference";
 }
 
-export function CreatePoll() {
+type Created = { shareUrl: string; dashboardUrl: string };
+
+export function CreatePoll({ signedIn, testMode }: { signedIn: boolean; testMode: boolean }) {
   const [text, setText] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [draft, setDraft] = useState<PollDraft | null>(null);
-  const [busy, setBusy] = useState<"reading" | "updating" | null>(null);
+  const [busy, setBusy] = useState<"reading" | "updating" | "creating" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [edited, setEdited] = useState(false);
+  const [closeAt, setCloseAt] = useState("");
+  const [created, setCreated] = useState<Created | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function create() {
+    if (!draft) return;
+    setBusy("creating");
+    setError(null);
+    try {
+      const res = await fetch("/api/polls", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft, closeAt: closeAt ? new Date(closeAt).toISOString() : null }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "The poll wasn't created. Try again.");
+      setCreated(json);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "The poll wasn't created. Try again.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function copy() {
+    if (!created) return;
+    await navigator.clipboard.writeText(created.shareUrl);
+    setCopied(true);
+  }
 
   async function send(payload: object, mode: "reading" | "updating") {
     setBusy(mode);
@@ -86,7 +117,7 @@ export function CreatePoll() {
             </Button>
           )}
         </div>
-        {error && <Notice tone="error">{error}</Notice>}
+        {error && !preview && <Notice tone="error">{error}</Notice>}
       </section>
 
       {draft && preview && (
@@ -252,6 +283,15 @@ export function CreatePoll() {
               <Notice>I couldn't use: {draft.notUnderstood.map((q) => `“${q}”`).join(", ")}.</Notice>
             )}
 
+            <Field label="Close the poll at (optional)" hint="After this, nobody can answer. You can still pick a time.">
+              <input
+                type="datetime-local"
+                className={`${inputClass} sm:max-w-xs`}
+                value={closeAt}
+                onChange={(e) => setCloseAt(e.target.value)}
+              />
+            </Field>
+
             {edited && (
               <Button variant="quiet" onClick={() => send({ draft }, "updating")} disabled={busy !== null}>
                 {busy === "updating" ? "Updating times…" : "Update the times"}
@@ -274,6 +314,44 @@ export function CreatePoll() {
               </Notice>
             ) : (
               <SlotList slots={preview.options} zone={zone} />
+            )}
+          </section>
+
+          <section aria-labelledby="share" className="space-y-4">
+            {error && <Notice tone="error">{error}</Notice>}
+            {created ? (
+              <div className="space-y-4 rounded-md border border-rule bg-paper-deep p-5">
+                <h2 id="share" className="text-2xl">
+                  Your poll is ready
+                </h2>
+                <p>Send this link to the group in WhatsApp, email or wherever you talk. Nobody needs an account.</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <input readOnly aria-label="Share link" value={created.shareUrl} className={`${inputClass} flex-1`} />
+                  <Button variant="quiet" onClick={copy}>
+                    {copied ? "Link copied" : "Copy link"}
+                  </Button>
+                </div>
+                <a href={created.dashboardUrl} className="inline-block font-medium underline underline-offset-4">
+                  Open your poll's dashboard
+                </a>
+              </div>
+            ) : signedIn ? (
+              <Button
+                id="share"
+                onClick={create}
+                disabled={busy !== null || edited || preview.options.length === 0}
+              >
+                {busy === "creating" ? "Creating the poll…" : edited ? "Update the times first" : "Create poll"}
+              </Button>
+            ) : (
+              <Notice>
+                Sign in to create the poll.{" "}
+                {testMode && (
+                  <a className="underline" href="/api/test-login?next=/new">
+                    Use the test sign-in
+                  </a>
+                )}
+              </Notice>
             )}
           </section>
         </>

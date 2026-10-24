@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import { getOrganizer, testModeOn } from "@/lib/auth/organizer";
 import { CreatePoll } from "./CreatePoll";
 
 export const metadata: Metadata = { title: "New poll · Calendarly" };
+
+async function CreatePollForOrganizer() {
+  const organizer = await getOrganizer();
+  return <CreatePoll signedIn={organizer !== null} testMode={testModeOn()} />;
+}
 
 export default function NewPollPage() {
   return (
@@ -13,7 +20,9 @@ export default function NewPollPage() {
           when you're free.
         </p>
       </div>
-      <CreatePoll />
+      <Suspense fallback={<p className="text-pencil">Loading…</p>}>
+        <CreatePollForOrganizer />
+      </Suspense>
     </div>
   );
 }

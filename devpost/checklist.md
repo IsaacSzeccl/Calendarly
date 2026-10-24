@@ -19,7 +19,7 @@ Build mode: fast. The learner asked for an unattended build ("continue building 
   Learner check: Run `npm run dev`, open `http://localhost:3000/new`, paste the Tom/Jamie example, and check that the summary and the five times match what you meant.
   Commit: `Plain-language poll preview with first options`
 
-- [ ] **2. Create the poll, share the link, and a guest answers it**
+- [x] **2. Create the poll, share the link, and a guest answers it**
   Becomes usable: "Create poll" saves the poll and its options and shows a share link with a copy button. Opening `/p/<token>` with no account shows the Doodle-style form (claim a listed name or type one, email, yes / prefer not / no per option). After submit the guest sees a confirmation; returning shows their saved answers; a closed poll is read-only.
   Why now: The poll link is the spine of the whole journey, and the data model is the first place the plan can be wrong.
   PRD ref: `prd.md > Guest response`, `prd.md > Screens and Layout > Guest: Poll Page`, `prd.md > States and Boundaries` (returning guest, poll closed, permissions)
@@ -119,3 +119,5 @@ Activity mode: not started
 - The mock model and sample calendar live in `src/lib/ai/mock.ts` and `src/lib/calendar/` rather than `tests/fakes/` — the end-to-end demo path runs them inside the app, not only in tests.
 - Next.js 16.4 enables Cache Components by default; kept on, so request-time reads (cookies, sessions) sit behind `Suspense` — the spec predates this default.
 
+- The same email on the same poll counts as the same guest when the cookie is missing (for example, a second device) — the spec only described the cookie; without this, one person answering twice would be counted twice in "X of Y".
+- Database types are generated from the Supabase schema into `src/lib/db/database.types.ts` — the untyped client inferred unusable row types.

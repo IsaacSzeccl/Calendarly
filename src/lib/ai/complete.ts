@@ -18,7 +18,10 @@ export type AiResult<T> =
   | { ok: false; error: string; runs: AiRun[] };
 
 type Logger = (run: AiRun) => Promise<void> | void;
-let logRun: Logger = () => {};
+let logRun: Logger = async (run) => {
+  const { logAiRun } = await import("@/lib/db/aiRuns");
+  await logAiRun(run);
+};
 
 /** Where every model call is recorded (the `ai_runs` table, once wired). */
 export function setAiRunLogger(logger: Logger) {
