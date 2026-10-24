@@ -93,16 +93,16 @@
   <h2>The three AI jobs</h2>
   <table>
     <tr><th>Job</th><th>In</th><th>Out (format-checked)</th></tr>
-    <tr><td><code>parsePoll</code></td><td>Organizer text, today's date, timezone</td><td>People (and who is required), expected count, window, duration, hours, constraints marked hard or soft, anything not understood</td></tr>
-    <tr><td><code>parseStatement</code></td><td>Guest text, today's date, guest timezone</td><td>Plain restatement, time ranges with timezone, a preferences summary, ambiguities</td></tr>
-    <tr><td><code>explain</code></td><td>Ranked slots with counts, constraint results, and conditional alternatives</td><td>Summary of best and not-best, conditional advice, one explanation per slot</td></tr>
+    <tr><td><code>parsePoll</code></td><td>Organizer text, today's date, timezone</td><td>People (and who is required), expected count, an <code>onlyIfNecessary</code> flag, window, duration, hours, constraints marked hard or soft, anything not understood</td></tr>
+    <tr><td><code>parseStatement</code></td><td>Guest text, today's date, guest timezone</td><td>Plain restatement, time ranges with timezone, a preferences summary, structured soft preferences the engine scores, ambiguities</td></tr>
+    <tr><td><code>explain</code></td><td>Options with labels, reason labels, counts, and conditional alternatives (no raw scores)</td><td>Summary of best and not-best, conditional advice, one explanation per slot</td></tr>
   </table>
   <p>Every call is logged in <code>ai_runs</code>. Invalid output gets one retry, then a plain "I couldn't read that" and nothing is added.</p>
 </section>
 
 <section>
   <h2>Components and tests</h2>
-  <details><summary>Engine <span class="pill code">pure code</span></summary><div><p>Slot building on a 30-minute grid <span class="assume">(assumption)</span>, constraint filtering, per-person status, ranking (yes 1.0, prefer not 0.5, no 0 <span class="assume">(assumption)</span>), the AI-slot cap, and the basis text. Fully unit-tested, including Jamie in Europe/London.</p></div></details>
+  <details><summary>Engine <span class="pill code">pure code</span></summary><div><p><strong>Candidate pool:</strong> windows of the meeting length in 15-minute steps across the organizer's free time, minus anything outside reasonable hours (default 08:00–21:00) in each person's own timezone. A short list is shown; only those get votes.</p><p><strong>Score:</strong> named penalties, each with a reason: "no", "prefer not", a required person's "no" (very large), soft preferences from the organizer or a guest. Hard constraints remove the slot first. Weights live in one config file <span class="assume">(assumption: starting values)</span>.</p><p><strong>Labels, not numbers:</strong> people see <em>Recommended</em>, <em>Works well</em>, <em>Works with trade-offs</em>, or <em>Not recommended</em>, plus yes / prefer not / no per person. A required person's "no" caps a slot at Not recommended. If the organizer only wants to meet if absolutely necessary, the bar rises and the summary can say nothing is a clear fit <span class="assume">(assumption)</span>.</p></div></details>
   <details><summary>Calendar adapter</summary><div><p>One interface, three implementations: Google (real), sample (hand-designed demo calendars, labeled), and an in-memory fake for tests.</p></div></details>
   <details><summary>Poll completion and closing</summary><div><p>After each submit, <code>isComplete</code> checks responses against the expected count and emails the organizer "6 of 6 have filled in". Closing is checked on each request, and there is a "Close poll now" button. A scheduled email at the close time needs a timer and is optional.</p></div></details>
   <details><summary>Meet again <span class="pill ext">stretch, last slice</span></summary><div><p>A "remember me" checkbox (off by default) keeps a guest's calendar connection. "New meeting with this group" copies consenting guests into a new poll and reuses their calendars. Guests can disconnect. If not built, it is narrated as "next", not faked.</p></div></details>
@@ -141,7 +141,7 @@ npm test | npm run test:evals | npm run test:e2e</pre>
 
 <section>
   <h2>For your agreement</h2>
-  <ul><li>Google-only sign-in (drops email sign-in).</li><li>Database reachable only from the server; no webhooks or background jobs; dashboard refresh button.</li><li>Add-to-calendar by link; only the organizer's calendar gets the event.</li><li>Fonts: Fraunces (headings) and DM Sans (body).</li><li>Slot grid, default duration, vote weights, and "explicit vote overrides calendar".</li><li>Poll closing checked on each request; the scheduled close-time email is optional.</li></ul>
+  <ul><li>Google-only sign-in (drops email sign-in).</li><li>Database reachable only from the server; no webhooks or background jobs; dashboard refresh button.</li><li>Add-to-calendar by link; only the organizer's calendar gets the event.</li><li>Fonts: Fraunces (headings) and DM Sans (body).</li><li>Default duration, starting score weights, reasonable hours (08:00–21:00 in each person's timezone), and "explicit vote overrides calendar".</li><li>Labels instead of percentages (your choice), and the "only if necessary" behavior.</li><li>Poll closing checked on each request; the scheduled close-time email is optional.</li></ul>
 </section>
 
 <footer>Generated from <code>devpost/spec.md</code>, which is the canonical version. Versions and service limits marked "verify" in the spec are not checked yet.</footer>

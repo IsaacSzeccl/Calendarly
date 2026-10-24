@@ -33,7 +33,7 @@ Cloud sessions only: the environment's network policy blocked `api.z.ai`, `api.s
 ## Suggested build order (slices)
 Put the end-to-end demo path first; the real Google calendar and real model arrive as early as possible.
 0. Scaffold Next.js + TypeScript + Tailwind, Vitest, Playwright, GitHub Actions CI, `.env.example` check. Verify the unverified items below.
-1. Engine (pure code) + unit tests: slots, constraints, status, rank, `addAiSlots` (cap 3), `conditionalAdvice`, `isComplete`, `basisText`.
+1. Engine (pure code) + unit tests: candidate pool (15-minute step, reasonable hours per person's timezone), `chooseInitialOptions`, status, `scoreSlot` (named penalties with reasons; required person's "no" dominates), `labelFor` (Recommended / Works well / Works with trade-offs / Not recommended; no percentages shown), `rank`, `addAiSlots` (cap 3), `conditionalAdvice`, `isComplete`, `basisText`.
 2. AI layer + golden-case evals (Tom/Jamie example, "Tuesday or Wednesday afternoons, not Mondays"), mocked by default, `LIVE=1` for the real model. Open an `ai_runs` row with the learner here (their stated learning goal).
 3. Calendar adapter (Google, sample, fake) + organizer sign-in and "Connect Google Calendar".
 4. Organizer Create Poll + share link.
@@ -60,7 +60,10 @@ Put the end-to-end demo path first; the real Google calendar and real model arri
 - Demo: 1–3 minutes, 6 people, a university group-project scenario; centerpiece is "no perfect slot" with conditional advice and a slot added from a guest's plain-language statement. Seeded accounts are labeled honestly. Nothing is claimed about 20-person groups.
 
 ## Proposed in the spec, awaiting explicit learner agreement
-Google-only sign-in; server-only database access; no webhooks or background jobs; add-to-calendar link instead of writing to guests' calendars; 30-minute slot grid and 60-minute default; vote weights (yes 1.0, prefer not 0.5, no 0) with an explicit vote overriding a connected calendar; fonts Fraunces and DM Sans. The learner approved the spec as a whole, so treat these as accepted unless they object, and flag any that cause trouble.
+Google-only sign-in; server-only database access; no webhooks or background jobs; add-to-calendar link instead of writing to guests' calendars; 60-minute default duration; tunable score weights in `lib/config.ts`; reasonable hours 08:00–21:00 per person's timezone; the `onlyIfNecessary` higher bar; an explicit vote overriding a connected calendar; fonts Fraunces and DM Sans. The learner approved the spec as a whole, so treat these as accepted unless they object, and flag any that cause trouble.
+
+## Decided after the first handoff draft
+Scoring: 15-minute candidate step; one weighted score; a required person's "no" is a very large penalty; guests' structured preferences score as soft penalties; fuzzy labels only (Recommended, Works well, Works with trade-offs, Not recommended), never percentages. "Only if absolutely necessary" raises the bar, and the summary may say nothing is a clear fit.
 
 ## Learner's goals worth honoring in the build
 Use their Claude Code extensions and agentic workflows (ask which); Vercel's MCP server and deploy plugin ([docs](https://vercel.com/docs/agent-resources/vercel-mcp)); Anthropic's `frontend-design` skill with `prd.md > Look and Feel` as the brief ([overview](https://claudelog.com/faqs/what-is-frontend-design-skill-in-claude-code/)); fully automated tests; understanding the AI architecture. Verify install commands against official docs before running them.

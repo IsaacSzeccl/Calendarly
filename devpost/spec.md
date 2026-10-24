@@ -110,10 +110,18 @@ PRD ref: `prd.md > Privacy`, `prd.md > Demo and Success Criteria`.
 
 ### Slot and Ranking Engine (pure code)
 Deterministic functions with no network access, so they can be fully tested:
-- `buildFreeWindows` and `buildCandidateSlots`: from the organizer's busy times, working hours, window and duration, produce slots on a 30-minute grid *(assumption)*.
-- `applyConstraints`: removes slots that break hard constraints and penalizes ones that break soft constraints.
-- `statusFor`: for each person and slot, gives yes, prefer not, no, or unknown. A connected guest's calendar sets yes/no automatically; an explicit vote overrides it *(assumption)*.
-- `rank`: orders slots by fewest "no", then fewest "prefer not", then constraint penalties, then spread across days. Weights: yes 1.0, prefer not 0.5, no 0 *(assumption, tunable; tests pin them)*.
+- `buildCandidatePool`: slides a window of the meeting length across the organizer's free time in 15-minute steps (the learner's choice). It drops any candidate outside "reasonable hours" for any person, judged in that person's own timezone (default 08:00–21:00, a config value; the AI can only adjust it through a structured setting, for example "a late evening call"). The pool is computed when needed and is not stored.
+- `chooseInitialOptions`: picks a short list (a config value, about 5) from the pool, spread across days, scored with what is known so far. Only these shown options get votes.
+- `statusFor`: for each person and shown option, gives yes, prefer not, no, or unknown. A connected guest's calendar sets yes/no automatically; an explicit vote overrides it *(assumption)*.
+- `scoreSlot`: adds up named penalties, each with a reason label, so a score always comes with its reasons:
+  - a person marked "no" (large), "prefer not" (small);
+  - a required person marked "no" (very large, so it dominates);
+  - a hard constraint (for example "can't do Tuesdays") removes the slot before scoring;
+  - a soft constraint from the organizer's text or a guest's structured preference (for example "Sam doesn't like mornings") adds a small penalty scaled by its strength;
+  - a small preference for spreading options across days.
+  The weights live in `lib/config.ts` and the unit tests pin them *(assumption: starting values, tunable)*. Scores are internal numbers and are never shown to anyone.
+- `labelFor`: turns a score into the fuzzy label people see: **Recommended**, **Works well**, **Works with trade-offs**, **Not recommended**. Rules override bands: a required person marked "no" can never be better than Not recommended, and Recommended needs no "no" from anyone. Per person, the marks stay yes / prefer not / no.
+- `rank`: orders the shown options by score. If the organizer said they only want to meet if absolutely necessary (`onlyIfNecessary`), the bar is higher *(assumption)*: Recommended and Works well need no "no" from anyone, and when nothing reaches Works well the summary says so plainly ("Nothing here is a clear fit; since you only want to meet if necessary, it may be better to wait or widen the dates") instead of forcing a pick.
 - `addAiSlots`: intersects proposed ranges with the organizer's free windows, removes duplicates, and stops at the cap (a config value, 3).
 - `conditionalAdvice`: for the top slot overall, and for each person treated as required, finds the best slot and who it leaves out, so "if Sam must be there, option 2; otherwise option 1" is computed by code, not guessed by the model.
 - `isComplete`: compares responses with the expected count, and reports "4 of 6" for the dashboard and emails.
@@ -125,9 +133,9 @@ Everything that talks to the model lives in `src/lib/ai/`, behind one `complete(
 
 | Job | Input | Output (checked by a zod schema) |
 |---|---|---|
-| `parsePoll` | The organizer's text, today's date, the organizer's timezone | people (with notes, timezone, hours, and whether each is required), expected number of people, window, duration, working hours, constraints each marked `hard` or `soft`, and a list of things it did not understand |
-| `parseStatement` | The guest's text, today's date, the guest's timezone | a plain-language restatement, a list of time ranges with timezone, a short preferences summary for the organizer, and anything ambiguous |
-| `explain` | The ranked slots with their counts, constraint results, and the conditional alternatives (all computed by code) | a summary of the best and the not-best options, conditional advice sentences, and one explanation per slot |
+| `parsePoll` | The organizer's text, today's date, the organizer's timezone | people (with notes, timezone, hours, and whether each is required), expected number of people, window, duration, working hours, constraints each marked `hard` or `soft`, an optional `reasonableHours` adjustment, an `onlyIfNecessary` flag, and a list of things it did not understand |
+| `parseStatement` | The guest's text, today's date, the guest's timezone | a plain-language restatement, a list of time ranges with timezone, a short preferences summary for the organizer, structured soft preferences (for example avoid mornings, with a strength) that the engine scores, and anything ambiguous |
+| `explain` | The shown options with their labels, reason labels, counts, and the conditional alternatives (all computed by code; no raw scores) | a summary of the best and the not-best options, conditional advice sentences, and one explanation per slot |
 
 Rules for all three: the model is given the date and timezone so "next week" has a fixed meaning; its answer must pass the schema; one automatic retry on invalid output; then a plain "I couldn't read that" result. The model is never given calendar event details, only counts and times. The model's output is never trusted for permissions or limits. Every call is recorded in `ai_runs` (input, output, valid or not, milliseconds) so behavior can be inspected and replayed.
 PRD ref: `prd.md > Poll creation in plain language`, `prd.md > Guest plain-language availability`, `prd.md > Ranking and AI summary`.
@@ -196,7 +204,7 @@ calendarly/
 │   │   ├── calendar/                 # CalendarProvider, google.ts, seeded.ts
 │   │   ├── email/                    # Brevo SMTP sender, templates
 │   │   ├── db/                       # Supabase server client, queries, migrations
-│   │   └── config.ts                 # AI slot cap and other tunables
+│   │   └── config.ts                 # AI slot cap, reasonable hours, score weights, label bands
 │   └── styles/                       # design tokens (palette, fonts)
 ├── tests/
 │   ├── unit/                         # engine tests
@@ -246,6 +254,7 @@ Everything below is unverified against live accounts; the first build step shoul
 ## Decisions and Open Issues
 
 ### Learner decisions
+- **Scoring (decided after the build handoff):** candidate periods on a 15-minute step; one weighted score with a very large penalty when a required person cannot attend; guests' stated preferences score as soft penalties; people see fuzzy labels (Recommended, Works well, Works with trade-offs, Not recommended) and per-person marks (yes / prefer not / no), never percentages or scores.
 - **Stack unchanged:** Next.js on Vercel, Supabase, Brevo SMTP, GLM (Z.ai), Google Calendar.
 - **Model:** flexible; the learner has a GLM key, so GLM is first, behind a swappable adapter.
 - **Live URL on a custom domain**, bought through Vercel, in addition to the video and repository. Reason: the Google verification attempt needs a domain the learner owns.
@@ -257,7 +266,8 @@ Everything below is unverified against live accounts; the first build step shoul
 
 ### Derived by the agent (need agreement at review)
 - Google-only sign-in; the database reachable only from the server; no webhooks or background jobs; guests identified by a link token and cookie; add-to-calendar by link; sample-calendar demo accounts; dashboard refresh button.
-- Slot grid of 30 minutes and a default duration of 60 minutes shown for the organizer to edit; vote weights (yes 1.0, prefer not 0.5, no 0); an explicit vote overrides a connected calendar's automatic answer.
+- A default duration of 60 minutes shown for the organizer to edit; starting score weights (tunable, pinned by tests); an explicit vote overrides a connected calendar's automatic answer.
+- Reasonable hours default to 08:00–21:00 in each person's own timezone, applied by code. The `onlyIfNecessary` behavior (a higher bar, and a plain "nothing here is a clear fit" message).
 - Hard versus soft constraints: "can't do Tuesdays" is hard, "does not like nights" is soft.
 - Proposed fonts: Fraunces and DM Sans.
 - The relative-phrase mechanism (this answers `prd.md > Open Questions`): the model is told today's date and the guest's browser timezone; the guest sees the timezone and can change it; the "What I understood" step shows concrete dates before anything is added.

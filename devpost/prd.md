@@ -101,6 +101,9 @@ Source: `scope.md > The Unique Kernel`.
 - As an organizer, I want to know which time is best and why.
   - [ ] Every option has a plain-language explanation that states its basis, for example "based on 2 connected calendars, 2 votes, and 1 stated availability".
   - [ ] The summary says which option is best and which are not, and names the trade-off (for example "Option A has everyone but is at 8am; Option B works better but Sam can't make it").
+  - [ ] Options carry plain labels (Recommended, Works well, Works with trade-offs, Not recommended) and per-person marks (yes / prefer not / no); no percentage or score is shown.
+  - [ ] A slot a required person cannot attend is never labeled better than Not recommended.
+  - [ ] If the organizer said they only want to meet if absolutely necessary *(assumption)*, the bar is higher, and when nothing is a clear fit the summary says so instead of forcing a pick.
   - [ ] The ranking only advises. Nothing is chosen until the organizer picks.
   - [ ] When no option suits everyone, the summary gives conditional advice based on who is required ("If Sam must be there, choose option 2; otherwise option 1 works for 5 of 6").
   - [ ] Each person's stated preferences are visible to the organizer.
