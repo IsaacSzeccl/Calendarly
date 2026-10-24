@@ -61,7 +61,7 @@ describe("config is pinned", () => {
     expect(config.slotStepMinutes).toBe(15);
     expect(config.aiSlotCap).toBe(3);
     expect(config.reasonableHours).toEqual({ start: "08:00", end: "21:00" });
-    expect(config.weights).toMatchObject({ no: 10, requiredNo: 1000, preferNot: 3, softConstraint: 2 });
+    expect(config.weights).toMatchObject({ no: 10, requiredNo: 1000, preferNot: 3, unmarked: 1, softConstraint: 2 });
   });
 });
 

@@ -1,7 +1,9 @@
+import { after } from "next/server";
 import { z } from "zod";
 import { isValidZone } from "@/lib/engine/time";
 import { getOptions, getPollByToken, saveResponse, statusOf } from "@/lib/db/polls";
 import { readGuestToken, writeGuestToken } from "@/lib/guest/cookie";
+import { afterGuestResponse } from "@/lib/polls/actions";
 
 const body = z.object({
   token: z.string().min(10).max(64),
@@ -40,6 +42,8 @@ export async function POST(request: Request) {
     votes: input.votes,
   });
   await writeGuestToken(poll.id, guest.guestToken);
+  const origin = new URL(request.url).origin;
+  after(() => afterGuestResponse(poll.id, origin));
 
   return Response.json({ ok: true, name: guest.name });
 }

@@ -10,6 +10,10 @@ export function timeRange(start: number, end: number, zone: string): string {
   return `${s.toFormat("HH:mm")}–${e.toFormat("HH:mm")}`;
 }
 
+export function dateTimeLabel(ms: number, zone: string): string {
+  return DateTime.fromMillis(ms, { zone }).toFormat("ccc d LLL, HH:mm");
+}
+
 export function slotLabel(start: number, end: number, zone: string): string {
   return `${dayLabel(start, zone)}, ${timeRange(start, end, zone)}`;
 }

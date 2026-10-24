@@ -1,5 +1,6 @@
 import "server-only";
-import type { AiRun } from "@/lib/ai/complete";
+import { extractJson, type AiRun } from "@/lib/ai/complete";
+import { explanationSchema, type Explanation } from "@/lib/ai/schemas";
 import { db, dbConfigured } from "./client";
 import type { Json } from "./database.types";
 
@@ -15,4 +16,25 @@ export async function logAiRun(run: AiRun): Promise<void> {
     error: run.error ?? null,
   });
   if (error) console.error("ai_runs insert failed:", error.message);
+}
+
+/** A previous valid explanation for exactly the same facts, if there is one. */
+export async function findExplanation(hash: string): Promise<Explanation | null> {
+  if (!dbConfigured()) return null;
+  const { data } = await db()
+    .from("ai_runs")
+    .select("output")
+    .eq("job", "explain")
+    .eq("valid", true)
+    .eq("input->>hash", hash)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data?.output) return null;
+  try {
+    const parsed = explanationSchema.safeParse(extractJson(data.output));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
 }

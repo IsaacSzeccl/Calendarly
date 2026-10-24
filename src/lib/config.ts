@@ -22,6 +22,8 @@ export const config = {
     no: 10,
     requiredNo: 1000,
     preferNot: 3,
+    /** Someone answered the poll but left this time blank. */
+    unmarked: 1,
     softConstraint: 2,
     /** Applied per option already chosen on the same day, when picking initial options. */
     sameDay: 1.5,

@@ -29,7 +29,7 @@ Build mode: fast. The learner asked for an unattended build ("continue building 
   Learner check: Create a poll, open the share link in a private window, vote as "Sam", reopen the link and see your answers still there.
   Commit: `Save polls and let guests answer from the link`
 
-- [ ] **3. The organizer sees the ranking, the AI note and conditional advice, and picks a slot**
+- [x] **3. The organizer sees the ranking, the AI note and conditional advice, and picks a slot**
   Becomes usable: The dashboard at `/poll/<id>` shows the people list with "X of Y", votes per option, fuzzy labels, an AI note that names the trade-off and its basis, conditional advice when no option suits everyone ("If Sam must be there, choose option 2"), close poll, and pick. Picking records the final slot, creates the event through the calendar provider, and sends the confirmation email with an add-to-calendar link. The "X of Y have filled in" email goes to the organizer when the expected count is reached.
   Why now: This is the kernel's payoff (explaining trade-offs). With slices 1-2 it completes the demo's main path, so the early hands-on check has something real to judge.
   PRD ref: `prd.md > Ranking and AI summary`, `prd.md > Finalizing`, `prd.md > Poll completion and closing`, `prd.md > Screens and Layout > Organizer: Poll Dashboard`, `prd.md > Emails`
@@ -121,3 +121,6 @@ Activity mode: not started
 
 - The same email on the same poll counts as the same guest when the cookie is missing (for example, a second device) — the spec only described the cookie; without this, one person answering twice would be counted twice in "X of Y".
 - Database types are generated from the Supabase schema into `src/lib/db/database.types.ts` — the untyped client inferred unusable row types.
+- A guest who answered the poll but left a time blank adds a small penalty, and "Recommended" needs no blanks from people who answered — on the first real dashboard a time only one person had marked was labeled Recommended.
+- The AI note is checked for faithfulness (every option covered, only real option numbers, advice kept, no percentages) and falls back to a code-written note otherwise; a valid note for the same facts is reused from `ai_runs`, so reloading the dashboard doesn't call the model again.
+- Emails to reserved test domains (`@example.com` and similar) are logged as skipped instead of sent — test guests would only bounce and hurt the Brevo sender's reputation.
