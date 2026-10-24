@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/*
+  Warm planner tokens. A diary page: paper, ink, ruled lines, one brick-red
+  ribbon marker. Availability colors always travel with an icon.
+*/
+:root {
+  color-scheme: light dark;
+  --paper: #faf7f0;
+  --paper-deep: #f2ede2;
+  --ink: #2a2420;
+  --pencil: #6e655c;
+  --rule: #e4ddd0;
+  --ribbon: #a8452b;
+  --ribbon-ink: #ffffff;
+  --yes: #2f7a4b;
+  --yes-wash: #e3f1e7;
+  --maybe: #a86a12;
+  --maybe-wash: #f8ecd5;
+  --no: #77716b;
+  --no-wash: #ebe8e3;
+  --danger: #a8322b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1c1916;
+    --paper-deep: #24201c;
+    --ink: #efe8dc;
+    --pencil: #b3a99c;
+    --rule: #3a342e;
+    --ribbon: #e07a55;
+    --ribbon-ink: #1c1916;
+    --yes: #7cc796;
+    --yes-wash: #1f3527;
+    --maybe: #e2b05c;
+    --maybe-wash: #3a2f1c;
+    --no: #a8a29b;
+    --no-wash: #2e2a26;
+    --danger: #f08a80;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-deep: var(--paper-deep);
+  --color-ink: var(--ink);
+  --color-pencil: var(--pencil);
+  --color-rule: var(--rule);
+  --color-ribbon: var(--ribbon);
+  --color-ribbon-ink: var(--ribbon-ink);
+  --color-yes: var(--yes);
+  --color-yes-wash: var(--yes-wash);
+  --color-maybe: var(--maybe);
+  --color-maybe-wash: var(--maybe-wash);
+  --color-no: var(--no);
+  --color-no-wash: var(--no-wash);
+  --color-danger: var(--danger);
+  --font-serif: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-serif);
+  font-optical-sizing: auto;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ribbon);
+  outline-offset: 2px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

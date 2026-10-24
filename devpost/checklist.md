@@ -1,0 +1,121 @@
+---
+doc: checklist
+status: approved
+---
+
+# Build Checklist
+
+Build mode: fast. The learner asked for an unattended build ("continue building the code and testing, and only ask me questions at the end"), so hands-on checkpoints move to one session at the end. They can switch to learn mode at any time.
+
+## Slices
+
+- [x] **1. Describe a meeting and see what the AI understood, with the first time options**
+  Becomes usable: A running site where the organizer types the Tom/Jamie description at `/new` and sees the poll as the AI read it (people, required, window, duration, hours, constraints) plus about 5 first options taken from the organizer's free time on a sample calendar. Nothing is saved yet.
+  Why now: The model is the riskiest unfamiliar part (Z.ai endpoint, model ID, output format) and is half of the kernel. Bootstrapping, the "code decides, the model interprets" rule, and the slot engine all start here so every later slice builds on them.
+  PRD ref: `prd.md > Poll creation in plain language`, `prd.md > Screens and Layout > Organizer: Create Poll`
+  Spec ref: `spec.md > Stack`, `spec.md > AI Layer`, `spec.md > Slot and Ranking Engine (pure code)` (`buildCandidatePool`, `chooseInitialOptions`), `spec.md > Calendar Adapter`, `spec.md > Look and Feel`, `spec.md > File Structure`
+  Build: Scaffold Next.js (App Router, TypeScript, Tailwind with the warm-planner tokens and Fraunces/DM Sans), Vitest, and an env-name check. Add `lib/config.ts`, `lib/ai` (`complete()` with zod check, one retry, `ai_runs` logging hook, `parsePoll`), the engine's candidate pool and initial options (15-minute step, reasonable hours per timezone, hard constraints), the `CalendarProvider` interface with the seeded and fake providers, and the `/new` page that previews the AI's reading and the options.
+  Verify (mechanical): `npm run build` passes; `npm test` passes the engine unit tests (Jamie in Europe/London, 15-minute step, reasonable hours, hard "no Tuesdays"); `npm run test:evals` passes the mocked Tom/Jamie golden case; one `LIVE=1` eval run against Z.ai is recorded; the dev server returns the preview for the Tom/Jamie text.
+  Learner check: Run `npm run dev`, open `http://localhost:3000/new`, paste the Tom/Jamie example, and check that the summary and the five times match what you meant.
+  Commit: `Plain-language poll preview with first options`
+
+- [ ] **2. Create the poll, share the link, and a guest answers it**
+  Becomes usable: "Create poll" saves the poll and its options and shows a share link with a copy button. Opening `/p/<token>` with no account shows the Doodle-style form (claim a listed name or type one, email, yes / prefer not / no per option). After submit the guest sees a confirmation; returning shows their saved answers; a closed poll is read-only.
+  Why now: The poll link is the spine of the whole journey, and the data model is the first place the plan can be wrong.
+  PRD ref: `prd.md > Guest response`, `prd.md > Screens and Layout > Guest: Poll Page`, `prd.md > States and Boundaries` (returning guest, poll closed, permissions)
+  Spec ref: `spec.md > Data Model`, `spec.md > Guest Identity (no accounts)`, `spec.md > Components > Guest Poll page`, `spec.md > Poll Completion and Closing`
+  Build: Write `supabase/migrations/` (all eight tables, server-only access, RLS on with no public policies) and apply them to the Calendarly Supabase project. Server-side Supabase client, organizer session (test login behind `E2E_TEST_MODE` until slice 5), create-poll API, guest page, submit API with the guest cookie, `ai_runs` rows written for real.
+  Verify (mechanical): Unit tests still pass; migration applied and listed by Supabase; through the dev server: create a poll, load `/p/<token>` without a session, submit votes, reload with the cookie and see them, and confirm the rows exist via SQL.
+  Learner check: Create a poll, open the share link in a private window, vote as "Sam", reopen the link and see your answers still there.
+  Commit: `Save polls and let guests answer from the link`
+
+- [ ] **3. The organizer sees the ranking, the AI note and conditional advice, and picks a slot**
+  Becomes usable: The dashboard at `/poll/<id>` shows the people list with "X of Y", votes per option, fuzzy labels, an AI note that names the trade-off and its basis, conditional advice when no option suits everyone ("If Sam must be there, choose option 2"), close poll, and pick. Picking records the final slot, creates the event through the calendar provider, and sends the confirmation email with an add-to-calendar link. The "X of Y have filled in" email goes to the organizer when the expected count is reached.
+  Why now: This is the kernel's payoff (explaining trade-offs). With slices 1-2 it completes the demo's main path, so the early hands-on check has something real to judge.
+  PRD ref: `prd.md > Ranking and AI summary`, `prd.md > Finalizing`, `prd.md > Poll completion and closing`, `prd.md > Screens and Layout > Organizer: Poll Dashboard`, `prd.md > Emails`
+  Spec ref: `spec.md > Slot and Ranking Engine (pure code)` (`statusFor`, `scoreSlot`, `labelFor`, `rank`, `conditionalAdvice`, `isComplete`, `basisText`), `spec.md > AI Layer` (`explain`), `spec.md > Email`, `spec.md > Poll Completion and Closing`
+  Build: Engine scoring, labels, ranking, `onlyIfNecessary`, conditional advice, completion and basis text with unit tests; the `explain` job with a deterministic fallback when the model fails; the dashboard; close and pick APIs; Brevo SMTP sender with `email_log`; confirmation and poll-update emails.
+  Verify (mechanical): Unit tests for every engine rule (required "no" never above Not recommended; Recommended needs no "no"; conditional advice picks the right option); mocked `explain` eval passes; through the dev server: the dashboard renders for the organizer and refuses a guest; pick writes `final_option_id`; `email_log` records each send (real Brevo send to the organizer's own address if SMTP is configured).
+  Learner check: With three guests' answers in, open the dashboard and read the note: does it say what you'd say about the trade-off? Pick a slot and check the confirmation email.
+  Commit: `Dashboard with ranking, AI note, conditional advice and pick`
+
+- [ ] **4. A guest types their availability, confirms what the AI understood, and new slots appear**
+  Becomes usable: Near the end of the guest form, "Tuesday or Wednesday afternoons, not Mondays" turns into a "What I understood" panel (dates, times, timezone, changeable). On "Looks right", code adds up to 3 slots where the organizer is free, marks them AI-added, and emails earlier voters "new options added". The guest's preferences appear on the organizer's dashboard and score as soft penalties.
+  Why now: The demo's "oh, that's cool" beat and the other half of the kernel; it needs slices 2-3 to show its effect.
+  PRD ref: `prd.md > Guest plain-language availability`, `prd.md > AI-added slots`, `prd.md > Screens and Layout > Guest: "What I Understood" Step`, `prd.md > States and Boundaries` (AI cannot understand, statement yields no free time, cap reached)
+  Spec ref: `spec.md > AI Layer` (`parseStatement`), `spec.md > Slot and Ranking Engine (pure code)` (`addAiSlots`), `spec.md > Components > "What I understood" step`, `spec.md > Important Failure Modes`
+  Build: `parseStatement` with golden-case evals; statement and confirm APIs; `addAiSlots` (intersect with organizer free time, dedupe, cap 3) with unit tests; the panel; the new-options email; soft preferences fed into scoring.
+  Verify (mechanical): Unit tests for the cap, busy-time exclusion and duplicates; mocked and one `LIVE=1` eval for "Tuesday or Wednesday afternoons, not Mondays"; through the dev server: a statement produces an interpretation and nothing is saved until confirm; confirm adds at most 3 slots; unreadable text returns the rephrase message.
+  Learner check: As a guest, type when you're free in your own words, check the panel, press "Looks right", and see the new times appear for the next guest.
+  Commit: `Guest plain-language availability adds confirmed slots`
+
+- [ ] **5. Real Google: the organizer signs in and connects Calendar; a guest can connect for pre-filled marks**
+  Becomes usable: Sign in with Google (Supabase), a separate "Connect Google Calendar" step, real free/busy for the organizer's options and AI-added slots, the picked slot created on the organizer's real calendar, and an optional guest connection that pre-fills yes/no marks the guest can change. Disconnect revokes the token. Expired tokens are flagged with "reconnect".
+  Why now: It depends on the learner's Google Cloud and Supabase provider setup, which can't be completed unattended; everything before it runs on the sample calendar behind the same interface, so swapping in Google changes no other code.
+  PRD ref: `prd.md > The Core Journey` (steps 1, 4, 9), `prd.md > Privacy`, `prd.md > States and Boundaries` (calendar connection fails, unverified app)
+  Spec ref: `spec.md > Calendar Connections`, `spec.md > Calendar Adapter`, `spec.md > External Services and Dependencies` (Google OAuth and Calendar API), `spec.md > Important Failure Modes`
+  Build: Supabase Google sign-in with `@supabase/ssr`; calendar OAuth connect/callback/disconnect with encrypted refresh tokens; `GoogleCalendarProvider` (`freeBusy`, `events.insert`); guest connect and pre-filled marks with "explicit vote wins".
+  Verify (mechanical): Unit tests for token encryption and the Google response mapping (fake HTTP); build passes; the OAuth start route redirects to Google with the right scopes and redirect URI; a live free/busy call succeeds if a connected test account is available, otherwise recorded as pending the learner.
+  Learner check: Sign in with your Google account, connect your calendar, create a poll, and check that the options avoid your busy times; pick one and see it on your calendar.
+  Commit: `Google sign-in, calendar connection and real free/busy`
+
+- [ ] **6. Demo-ready: six demo people, the warm-planner design, and an automated demo-path test**
+  Becomes usable: A seeded demo (organizer + 5 guests, sample calendars labeled honestly) that produces the "no perfect slot" case; the full warm-planner design on every screen (light and dark, icons with every color); the Playwright test that runs the demo path; CI on every push.
+  Why now: Polish and the demo scenario only make sense once the whole journey works; the e2e test locks it in before deployment.
+  PRD ref: `prd.md > Demo and Success Criteria`, `prd.md > Look and Feel`
+  Spec ref: `spec.md > Look and Feel`, `spec.md > Test Suite`, `spec.md > Decisions and Open Issues` (demo calendars)
+  Build: Demo seed script and sample calendars; design pass with the `frontend-design` skill; Playwright demo path using the fake calendar, mock model and test login; `.github/workflows/ci.yml`; README with run/test/demo steps.
+  Verify (mechanical): `npm run test:e2e` passes the demo path; unit and mocked evals pass; screenshots of each screen at phone and desktop width reviewed; CI workflow file validated.
+  Learner check: Run the demo seed, open the dashboard, and judge whether the "no perfect slot" story reads clearly in under a minute.
+  Commit: `Demo scenario, warm-planner design and demo-path test`
+
+- [ ] **7. Live on Vercel**
+  Becomes usable: The app deployed on Vercel at a stable URL with its environment variables, so others can try it.
+  Why now: Deployment is last for the core because it needs every secret in Vercel and the Google redirect URIs for the live address.
+  PRD ref: `prd.md > Demo and Success Criteria`
+  Spec ref: `spec.md > Where It Runs and How Someone Tries It`, `spec.md > External Services and Dependencies` (Vercel)
+  Build: Link the Vercel project, confirm the environment variables exist (names only), deploy a preview, then production if the learner agrees.
+  Verify (mechanical): Deployment reaches READY; the landing page and `/p/<token>` of a demo poll load on the live URL; runtime logs show no errors.
+  Learner check: Open the live URL on your phone and answer a demo poll as a guest.
+  Commit: `Deploy configuration for Vercel`
+
+- [ ] **8. Stretch: meet again with the same group**
+  Becomes usable: A "Remember me for future meetings with this organizer" checkbox for guests, and "New meeting with this group" on the dashboard that reuses consenting guests' calendars. Built only if slices 1-7 are done and tested; otherwise narrated as "next" in the demo.
+  Why now: Lowest priority by the learner's decision.
+  PRD ref: `prd.md > Product Decisions` (roster and "meet again"), `prd.md > Deferred From the POC`
+  Spec ref: `spec.md > Meet Again (stretch, last build slice)`
+  Build: Consent flag, copy consenting guests into a new poll, use stored calendars to propose slots, disconnect removes consent.
+  Verify (mechanical): Unit test for who gets copied; through the dev server, a new poll from the dashboard contains only consenting guests.
+  Learner check: Tick "remember me" as a guest, then start a new meeting with the group and see that guest already included.
+  Commit: `Meet again with the same group`
+
+## Hands-on Checkpoints
+
+- [ ] Early usable behavior explored: after slice 3 (create, answer, ranking with conditional advice). Moved to the end-of-build session because the learner is away during the build.
+- [ ] Final kick-the-tires exploration and feedback completed
+
+## Final Review
+
+- [ ] Final review complete — feedback resolved and learner confirms ready to ship
+
+## Code Tour and App Map
+
+- [ ] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
+- [ ] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
+- [ ] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
+
+Activity and evidence: not started
+Route and stops: not started
+Edit outcome: not started
+Reflection: not started
+Activity mode: not started
+
+## Revisions
+
+- Plan approved and built without a gut check — the learner asked for an unattended build with all questions at the end, so the build order is reviewed in the end-of-build session instead of before slice 1.
+- A hard rule about one named guest ("Leo only does evenings") now predicts that guest's "no" instead of removing the slot; hard rules about the organizer or the whole meeting still remove slots — the live model's reading of the group example showed one guest's hard rule would otherwise wipe out every option and make the "no perfect slot" case impossible. The same applies to a guest's stated hours.
+- AI calls send `reasoning_effort: "low"` instead of turning thinking off — the configured GLM model rejects `thinking: disabled` ("This model always engages in thinking").
+- Email settings use the names already in `.env` (`BREVO_SMTP_HOST`, `BREVO_SMTP_PORT`, `BREVO_SMTP_USER`, `BREVO_SMTP_KEY`) — found by the env-name check.
+- The mock model and sample calendar live in `src/lib/ai/mock.ts` and `src/lib/calendar/` rather than `tests/fakes/` — the end-to-end demo path runs them inside the app, not only in tests.
+- Next.js 16.4 enables Cache Components by default; kept on, so request-time reads (cookies, sessions) sit behind `Suspense` — the spec predates this default.
+
