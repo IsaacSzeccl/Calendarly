@@ -1,8 +1,6 @@
 // Calls the real model once for parsePoll and prints the raw answer.
 // Used to record golden answers. Run: npx tsx scripts/ai-probe.ts "<text>" [timezone]
-import { loadEnvConfig } from "@next/env";
-
-loadEnvConfig(process.cwd());
+import "./_env";
 
 async function main() {
   const { parsePoll } = await import("../src/lib/ai/parsePoll");

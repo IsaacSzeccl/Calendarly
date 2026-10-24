@@ -1,13 +1,6 @@
 // Sends one confirmation-style email through Brevo to check the email setup.
 // Run: npx tsx scripts/send-test-email.ts you@example.org
-import { loadEnvConfig } from "@next/env";
-import { createRequire } from "node:module";
-
-loadEnvConfig(process.cwd());
-// `server-only` refuses to load outside Next.js; this script is server-side by nature.
-createRequire(import.meta.url).cache[createRequire(import.meta.url).resolve("server-only")] = {
-  exports: {},
-} as NodeJS.Module;
+import "./_env";
 
 async function main() {
   const to = process.argv[2];

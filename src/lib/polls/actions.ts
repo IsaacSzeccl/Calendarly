@@ -1,10 +1,10 @@
 import "server-only";
 import { providerFor } from "@/lib/calendar";
 import { db, maybe } from "@/lib/db/client";
-import { getGuests, getOptions, getPoll, statusOf, updatePoll, type Poll } from "@/lib/db/polls";
+import { getGuests, getOptions, getPoll, getVotes, statusOf, updatePoll, type Poll } from "@/lib/db/polls";
 import { isComplete } from "@/lib/engine/rank";
 import { sendEmail } from "@/lib/email/send";
-import { confirmationEmail, pollUpdateEmail } from "@/lib/email/templates";
+import { confirmationEmail, newOptionsEmail, pollUpdateEmail } from "@/lib/email/templates";
 
 /** Links in emails point at the deployed site when APP_URL is set. */
 export function publicOrigin(fallback: string): string {
@@ -102,4 +102,30 @@ export async function finalizePoll(
     ),
   );
   return { ok: true, calendarEvent: eventId !== null };
+}
+
+/** Tell everyone who already voted (except whoever suggested them) that new times exist. */
+export async function notifyNewOptions(
+  poll: Poll,
+  added: { start: number; end: number }[],
+  suggestedBy: string,
+  origin: string,
+): Promise<void> {
+  const [guests, options] = await Promise.all([getGuests(poll.id), getOptions(poll.id)]);
+  const voted = new Set(
+    (await getVotes(options.map((o) => o.id))).map((v) => v.guestId),
+  );
+  const pollUrl = `${publicOrigin(origin)}/p/${poll.shareToken}`;
+  await Promise.all(
+    guests
+      .filter((g) => g.id !== suggestedBy && voted.has(g.id))
+      .map((g) =>
+        sendEmail({
+          kind: "new_options",
+          to: g.email,
+          pollId: poll.id,
+          ...newOptionsEmail({ guestName: g.name, title: poll.title, slots: added, guestZone: g.timezone, pollUrl }),
+        }),
+      ),
+  );
 }

@@ -1,5 +1,6 @@
 // Real model answers (Z.ai glm, recorded 2026-10-25, a Sunday), replayed by the mock model.
-// "@D+n" means today plus n days, so the recordings never go stale.
+// "@D+n" means today plus n days and "@W+n" the poll's first date plus n days, so the
+// recordings never go stale; "@TZ" and "@NAME" are the guest's timezone and name.
 
 export type Recording = { job: "parsePoll" | "parseStatement"; match: string; answer: unknown };
 
@@ -117,6 +118,38 @@ export const RECORDINGS: Recording[] = [
       reasonableHours: null,
       onlyIfNecessary: true,
       notUnderstood: [],
+    },
+  },
+  {
+    job: "parseStatement",
+    match: "Tuesday or Wednesday afternoons, not Mondays",
+    answer: {
+      restatement:
+        "You're free on Tuesday and Wednesday afternoons (12:00–17:00), and you'd rather avoid Mondays.",
+      ranges: [
+        { date: "@W+1", start: "12:00", end: "17:00" },
+        { date: "@W+2", start: "12:00", end: "17:00" },
+      ],
+      timezone: "@TZ",
+      preferencesSummary: "Prefers Tuesday or Wednesday afternoons; can't do Mondays",
+      preferences: [
+        { appliesTo: "@NAME", type: "avoid", strength: "soft", days: [1], weight: 2, description: "Avoids Mondays" },
+      ],
+      ambiguous: [],
+    },
+  },
+  {
+    job: "parseStatement",
+    match: "more available next week",
+    answer: {
+      restatement: "You're more available next week, and mornings are best for you.",
+      ranges: [0, 1, 2, 3, 4].map((n) => ({ date: `@W+${n}`, start: "09:00", end: "12:00" })),
+      timezone: "@TZ",
+      preferencesSummary: "Prefers mornings; more available next week",
+      preferences: [
+        { appliesTo: "@NAME", type: "prefer", strength: "soft", timeOfDay: "morning", weight: 2, description: "Mornings are best" },
+      ],
+      ambiguous: ["next week"],
     },
   },
 ];

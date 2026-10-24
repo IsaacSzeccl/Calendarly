@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
+import { useRef, useState, useSyncExternalStore } from "react";
 import type { Choice, OptionSource } from "@/lib/engine/types";
 import { slotLabel, zoneShort } from "@/lib/format";
 import { ChoicePicker, StatusMark } from "@/components/Availability";
 import { SlotList } from "@/components/SlotList";
 import { Button, Field, Notice, inputClass } from "@/components/ui";
+import { StatementBox } from "./StatementBox";
 
 export type GuestFormProps = {
   token: string;
@@ -42,8 +44,17 @@ export function GuestForm(props: GuestFormProps) {
     ? [props.me.name, ...props.listedNames]
     : props.listedNames;
 
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    await save();
+  }
+
+  /** Save the current answers. Returns false (and shows why) if they can't be saved yet. */
+  async function save(): Promise<boolean> {
+    if (formRef.current && !formRef.current.reportValidity()) return false;
     setSaving(true);
     setError(null);
     try {
@@ -55,8 +66,10 @@ export function GuestForm(props: GuestFormProps) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Your answers weren't saved. Try again.");
       setSaved(json.name);
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Your answers weren't saved. Try again.");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -66,7 +79,7 @@ export function GuestForm(props: GuestFormProps) {
     props.durationMinutes % 60 === 0 ? `${props.durationMinutes / 60}-hour` : `${props.durationMinutes}-minute`;
 
   return (
-    <form onSubmit={submit} className="space-y-10">
+    <form ref={formRef} onSubmit={submit} className="space-y-10">
       <header className="space-y-2">
         <h1 className="text-4xl">{props.title}</h1>
         <p className="text-pencil">
@@ -163,6 +176,18 @@ export function GuestForm(props: GuestFormProps) {
           }
         />
       </section>
+
+      {!readOnly && (
+        <StatementBox
+          token={props.token}
+          zone={zone}
+          ensureSaved={save}
+          onAdded={(added) => {
+            setVotes((v) => ({ ...v, ...Object.fromEntries(added.map((o) => [o.id, "yes" as const])) }));
+            router.refresh();
+          }}
+        />
+      )}
 
       {!readOnly && (
         <div className="space-y-3">

@@ -39,7 +39,7 @@ Build mode: fast. The learner asked for an unattended build ("continue building 
   Learner check: With three guests' answers in, open the dashboard and read the note: does it say what you'd say about the trade-off? Pick a slot and check the confirmation email.
   Commit: `Dashboard with ranking, AI note, conditional advice and pick`
 
-- [ ] **4. A guest types their availability, confirms what the AI understood, and new slots appear**
+- [x] **4. A guest types their availability, confirms what the AI understood, and new slots appear**
   Becomes usable: Near the end of the guest form, "Tuesday or Wednesday afternoons, not Mondays" turns into a "What I understood" panel (dates, times, timezone, changeable). On "Looks right", code adds up to 3 slots where the organizer is free, marks them AI-added, and emails earlier voters "new options added". The guest's preferences appear on the organizer's dashboard and score as soft penalties.
   Why now: The demo's "oh, that's cool" beat and the other half of the kernel; it needs slices 2-3 to show its effect.
   PRD ref: `prd.md > Guest plain-language availability`, `prd.md > AI-added slots`, `prd.md > Screens and Layout > Guest: "What I Understood" Step`, `prd.md > States and Boundaries` (AI cannot understand, statement yields no free time, cap reached)
@@ -124,3 +124,6 @@ Activity mode: not started
 - A guest who answered the poll but left a time blank adds a small penalty, and "Recommended" needs no blanks from people who answered — on the first real dashboard a time only one person had marked was labeled Recommended.
 - The AI note is checked for faithfulness (every option covered, only real option numbers, advice kept, no percentages) and falls back to a code-written note otherwise; a valid note for the same facts is reused from `ai_runs`, so reloading the dashboard doesn't call the model again.
 - Emails to reserved test domains (`@example.com` and similar) are logged as skipped instead of sent — test guests would only bounce and hurt the Brevo sender's reputation.
+- Guests add a time through the plain-language box rather than a separate "add a time" picker — the box already covers it ("Thursday from 3pm to 5pm") and keeps one path through the confirm step and the cap.
+- Times a guest suggests start as a "yes" for that guest, and asking for a suggestion first saves their answers — a suggestion needs a known guest, and the suggester obviously can make it.
+- Statement recordings use "@W+n" (poll start plus n days) — the model can read "next week" differently on a Sunday, so tests check what must hold (mornings, inside the poll's dates, timezone) and the guest's confirm step settles which week.
