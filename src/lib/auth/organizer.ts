@@ -18,8 +18,9 @@ export type Organizer = {
 
 export const TEST_COOKIE = "calendarly_test_organizer";
 
+/** The test-only sign-in. Never on in a Vercel production deployment, whatever the setting. */
 export function testModeOn(): boolean {
-  return process.env.E2E_TEST_MODE === "1";
+  return process.env.E2E_TEST_MODE === "1" && process.env.VERCEL_ENV !== "production";
 }
 
 /**
@@ -33,6 +34,8 @@ export async function getOrganizer(): Promise<Organizer | null> {
     if (raw) {
       try {
         const t = JSON.parse(raw) as { id: string; name: string; email: string | null };
+        // The cookie is unsigned, so it may only ever name a test organizer, never a real one.
+        if (typeof t.id !== "string" || !t.id.startsWith("test:")) throw new Error("not a test id");
         return { ...t, calendar: { kind: "sample", key: "organizer" }, calendarNeedsReconnect: false, isTest: true };
       } catch {
         // fall through to a real session

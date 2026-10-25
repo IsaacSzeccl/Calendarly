@@ -39,14 +39,17 @@ export function insideClock(slot: Interval, range: ClockRange, zone: string): bo
   return s >= rs && s + lengthMin <= re + 1440;
 }
 
-/** Does any part of the slot touch the clock range in this zone? */
+/** Does any part of the slot touch the clock range in this zone? Exact to the minute. */
 export function overlapsClock(slot: Interval, range: ClockRange, zone: string): boolean {
-  for (let t = slot.start; t < slot.end; t += 15 * MINUTE) {
-    if (insideClock({ start: t, end: Math.min(t + 15 * MINUTE, slot.end) }, range, zone)) {
-      return true;
-    }
-  }
-  return false;
+  const start = localMinutes(slot.start, zone);
+  const end = start + Math.round((slot.end - slot.start) / MINUTE);
+  const rs = minutesOf(range.start);
+  const re = minutesOf(range.end);
+  // The range as segments of the day (two if it crosses midnight), repeated on the
+  // next day so a slot that itself crosses midnight is covered too.
+  const day = rs < re ? [[rs, re]] : [[rs, 1440], [0, re]];
+  const segments = [...day, ...day.map(([a, b]) => [a + 1440, b + 1440])];
+  return segments.some(([a, b]) => a < end && start < b);
 }
 
 export function timeOfDayRange(word: TimeOfDay): ClockRange {

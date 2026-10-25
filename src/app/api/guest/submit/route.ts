@@ -1,7 +1,7 @@
 import { after } from "next/server";
 import { z } from "zod";
 import { isValidZone } from "@/lib/engine/time";
-import { getOptions, getPollByToken, saveResponse, statusOf } from "@/lib/db/polls";
+import { EmailTakenError, getOptions, getPollByToken, saveResponse, statusOf } from "@/lib/db/polls";
 import { readGuestToken, writeGuestToken } from "@/lib/guest/cookie";
 import { afterGuestResponse } from "@/lib/polls/actions";
 
@@ -33,14 +33,26 @@ export async function POST(request: Request) {
     return Response.json({ error: "One of the times no longer exists. Reload and try again." }, { status: 409 });
   }
 
-  const guest = await saveResponse({
-    pollId: poll.id,
-    guestToken: await readGuestToken(poll.id),
-    name: input.name,
-    email: input.email,
-    timezone: input.timezone,
-    votes: input.votes,
-  });
+  let guest;
+  try {
+    guest = await saveResponse({
+      pollId: poll.id,
+      guestToken: await readGuestToken(poll.id),
+      name: input.name,
+      email: input.email,
+      timezone: input.timezone,
+      votes: input.votes,
+    });
+  } catch (e) {
+    if (!(e instanceof EmailTakenError)) throw e;
+    return Response.json(
+      {
+        error:
+          "Someone already answered this poll with that email. Open the link on the device you used then, or use a different email.",
+      },
+      { status: 409 },
+    );
+  }
   await writeGuestToken(poll.id, guest.guestToken);
   const origin = new URL(request.url).origin;
   after(() => afterGuestResponse(poll.id, origin));

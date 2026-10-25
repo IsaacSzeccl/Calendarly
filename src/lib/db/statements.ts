@@ -86,3 +86,8 @@ export async function setVotes(guestId: string, votes: Record<string, Choice>) {
     "save votes",
   );
 }
+
+/** Undo a confirmation when adding the slots failed, so the guest can try again. */
+export async function releaseConfirmation(id: string): Promise<void> {
+  ok(await db().from("statements").update({ confirmed: false, confirmed_ranges: null }).eq("id", id), "release statement");
+}

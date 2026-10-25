@@ -1,11 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { safeNext } from "@/lib/safeNext";
 import { createAuthClient } from "@/lib/supabase/server";
-
-const safe = (next: string | null) => (next && next.startsWith("/") && !next.startsWith("//") ? next : "/new");
 
 /** Start "Sign in with Google" through Supabase. */
 export async function GET(request: NextRequest) {
-  const next = safe(request.nextUrl.searchParams.get("next"));
+  const next = safeNext(request.nextUrl.searchParams.get("next"), request.url);
   const supabase = await createAuthClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",

@@ -3,6 +3,7 @@ import { parsePoll, type PollDraft } from "@/lib/ai/parsePoll";
 import { getOrganizer } from "@/lib/auth/organizer";
 import { CalendarUnavailableError, inZone } from "@/lib/calendar/provider";
 import { isValidZone } from "@/lib/engine/time";
+import { allow } from "@/lib/rateLimit";
 import { previewOptions } from "@/lib/polls/preview";
 import { draftSchema } from "@/lib/polls/schema";
 
@@ -19,8 +20,17 @@ export async function POST(request: Request) {
     return Response.json({ error: "Please describe the meeting first." }, { status: 400 });
   }
 
+  const organizer = await getOrganizer();
   let draft: PollDraft;
   if ("text" in parsed.data) {
+    // Reading a description costs a model call: visitors who aren't signed in get a few per hour.
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+    if (!organizer && !allow(`preview:${ip}`, 10, 60 * 60_000)) {
+      return Response.json(
+        { error: "You've tried a lot of descriptions. Sign in to keep going, or wait a while." },
+        { status: 429 },
+      );
+    }
     const result = await parsePoll({ text: parsed.data.text, timezone: parsed.data.timezone });
     if (!result.ok) {
       return Response.json(
@@ -37,7 +47,6 @@ export async function POST(request: Request) {
   }
 
   // Signed-in organizers see their real free time; visitors trying it out see a sample calendar.
-  const organizer = await getOrganizer();
   const account = inZone(organizer?.calendar ?? { kind: "sample", key: "organizer" }, draft.rules.organizerTimezone);
   try {
     const { options, poolSize } = await previewOptions(draft.rules, account);

@@ -8,7 +8,7 @@ import {
   rulePenalties,
   ruleScore,
 } from "@/lib/engine/slots";
-import { insideClock, localWeekday } from "@/lib/engine/time";
+import { insideClock, localWeekday, overlapsClock } from "@/lib/engine/time";
 import type { PollRules, SlotOption } from "@/lib/engine/types";
 
 const NY = "America/New_York";
@@ -208,6 +208,23 @@ describe("addAiSlots", () => {
       ranges: [{ start: at("2026-10-28T21:30"), end: at("2026-10-28T23:30") }],
     });
     expect(res.added).toEqual([]);
+  });
+});
+
+describe("overlapsClock", () => {
+  it("catches a partial overlap off the 15-minute grid", () => {
+    const noon = { start: at("2026-10-26T12:00"), end: at("2026-10-26T13:00") };
+    expect(overlapsClock(noon, { start: "12:50", end: "14:00" }, NY)).toBe(true);
+    expect(overlapsClock(noon, { start: "13:00", end: "14:00" }, NY)).toBe(false);
+  });
+
+  it("handles night ranges that cross midnight", () => {
+    const late = { start: at("2026-10-26T20:30"), end: at("2026-10-26T21:30") };
+    expect(overlapsClock(late, { start: "21:00", end: "06:00" }, NY)).toBe(true);
+    const early = { start: at("2026-10-26T05:30"), end: at("2026-10-26T06:30") };
+    expect(overlapsClock(early, { start: "21:00", end: "06:00" }, NY)).toBe(true);
+    const day = { start: at("2026-10-26T10:00"), end: at("2026-10-26T11:00") };
+    expect(overlapsClock(day, { start: "21:00", end: "06:00" }, NY)).toBe(false);
   });
 });
 

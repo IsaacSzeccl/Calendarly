@@ -4,26 +4,31 @@ import { db, maybe, must, ok } from "./client";
 
 export type OwnerKind = "organizer" | "guest";
 
+/**
+ * Save the person's Google token. Reconnecting updates the same row, so polls
+ * that point at this connection keep working after a token expires.
+ */
 export async function saveConnection(i: {
   ownerKind: OwnerKind;
   ownerId: string;
   refreshToken: string;
   scope: string;
 }): Promise<string> {
-  // One live connection per owner: replace any older one.
-  ok(
-    await db().from("calendar_connections").delete().eq("owner_kind", i.ownerKind).eq("owner_id", i.ownerId),
-    "replace connection",
-  );
+  const fields = {
+    encrypted_token: encryptToken(i.refreshToken),
+    scope: i.scope,
+    status: "active",
+    updated_at: new Date().toISOString(),
+  };
+  const existing = await findConnection(i.ownerKind, i.ownerId);
+  if (existing) {
+    ok(await db().from("calendar_connections").update(fields).eq("id", existing.id), "update connection");
+    return existing.id;
+  }
   const row = must(
     await db()
       .from("calendar_connections")
-      .insert({
-        owner_kind: i.ownerKind,
-        owner_id: i.ownerId,
-        encrypted_token: encryptToken(i.refreshToken),
-        scope: i.scope,
-      })
+      .insert({ ...fields, owner_kind: i.ownerKind, owner_id: i.ownerId })
       .select("id")
       .single(),
     "save connection",

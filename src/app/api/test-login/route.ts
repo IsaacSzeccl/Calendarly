@@ -1,5 +1,6 @@
 import { connection, NextResponse, type NextRequest } from "next/server";
 import { TEST_COOKIE, testModeOn } from "@/lib/auth/organizer";
+import { safeNext } from "@/lib/safeNext";
 
 /**
  * A sign-in that exists only when E2E_TEST_MODE=1, for automated tests and
@@ -12,9 +13,7 @@ export async function GET(request: NextRequest) {
   const name = params.get("name") || "Alex (test organizer)";
   const email = params.get("email") || null;
   const id = `test:${(email ?? name).toLowerCase()}`;
-  const next = params.get("next") || "/new";
-  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/new";
-  const res = NextResponse.redirect(new URL(safeNext, request.url));
+  const res = NextResponse.redirect(new URL(safeNext(params.get("next"), request.url), request.url));
   res.cookies.set(TEST_COOKIE, JSON.stringify({ id, name, email }), {
     httpOnly: true,
     sameSite: "lax",

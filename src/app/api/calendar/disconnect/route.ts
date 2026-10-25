@@ -2,7 +2,7 @@ import { z } from "zod";
 import { getOrganizer } from "@/lib/auth/organizer";
 import { revokeToken } from "@/lib/calendar/google";
 import { db, ok } from "@/lib/db/client";
-import { deleteConnection } from "@/lib/db/connections";
+import { deleteConnection, findConnection } from "@/lib/db/connections";
 import { getGuestByToken, getPollByToken } from "@/lib/db/polls";
 import { readGuestToken } from "@/lib/guest/cookie";
 
@@ -23,7 +23,8 @@ export async function POST(request: Request) {
     ok(await db().from("guests").update({ calendar_connection_id: null }).eq("id", guest.id), "unlink guest calendar");
   } else {
     const organizer = await getOrganizer();
-    if (organizer?.calendar?.kind === "google") connectionId = organizer.calendar.connectionId;
+    // Look the connection up whatever its state, so an expired one is still removed and revoked.
+    if (organizer && !organizer.isTest) connectionId = (await findConnection("organizer", organizer.id))?.id ?? null;
   }
   if (!connectionId) return Response.json({ ok: true });
 

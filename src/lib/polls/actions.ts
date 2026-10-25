@@ -67,6 +67,20 @@ export async function finalizePoll(
   const option = (await getOptions(poll.id)).find((o) => o.id === optionId);
   if (!option) return { ok: false, error: "That time isn't part of this poll." };
 
+  // Claim the pick first: only one request can win, so a double click can't
+  // create two events or send two rounds of emails.
+  const claimed = maybe(
+    await db()
+      .from("polls")
+      .update({ status: "finalized", final_option_id: option.id })
+      .eq("id", poll.id)
+      .neq("status", "finalized")
+      .select("id")
+      .maybeSingle(),
+    "claim pick",
+  );
+  if (!claimed) return { ok: false, error: "A time has already been picked." };
+
   let eventId: string | null = null;
   try {
     const created = await providerFor(poll.organizerCalendar).createEvent(poll.organizerCalendar, {
@@ -77,11 +91,10 @@ export async function finalizePoll(
       description: "Scheduled with Calendarly.",
     });
     eventId = created.id;
+    await updatePoll(poll.id, { google_event_id: eventId });
   } catch (e) {
     console.error("createEvent failed:", e instanceof Error ? e.message : e);
   }
-
-  await updatePoll(poll.id, { status: "finalized", final_option_id: option.id, google_event_id: eventId });
 
   const guests = await getGuests(poll.id);
   await Promise.all(
