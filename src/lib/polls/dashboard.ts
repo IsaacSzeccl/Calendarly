@@ -31,6 +31,8 @@ export type Dashboard = {
   waiting: string[];
   /** Guests whose connected calendar couldn't be read (expired or revoked). */
   needsReconnect: string[];
+  /** Guests who connected the labeled sample calendar (test mode). */
+  sampleCalendarGuests: string[];
   noClearFit: boolean;
   failedEmails: number;
   facts: ExplainFacts;
@@ -45,7 +47,7 @@ export async function loadDashboard(poll: Poll): Promise<Dashboard> {
     db().from("email_log").select("id", { count: "exact", head: true }).eq("poll_id", poll.id).eq("result", "failed"),
   ]);
   const statementGuests = new Set(must(statements, "load statements").map((s) => s.guest_id));
-  const calendars = await Promise.all(guests.map((g) => guestBusy(g.calendarConnectionId, options)));
+  const calendars = await Promise.all(guests.map((g) => guestBusy(g.calendarConnectionId, options, g.timezone)));
 
   const respondents: Respondent[] = guests.map((g, i) => ({
     id: g.id,
@@ -70,9 +72,14 @@ export async function loadDashboard(poll: Poll): Promise<Dashboard> {
   const clearFitMissing = noClearFit(ranked, poll.rules.onlyIfNecessary);
 
   const organizerSample = poll.organizerCalendar.kind === "sample";
+  const sampleCalendarGuests = guests.filter((_, i) => {
+    const c = calendars[i];
+    return c.state === "connected" && c.sample;
+  }).map((g) => g.id);
+  const realGuestCalendars = calendars.filter((c) => c.state === "connected" && !c.sample).length;
   const basis = basisText({
-    connectedCalendars: (organizerSample ? 0 : 1) + respondents.filter((r) => r.busy).length,
-    sampleCalendars: organizerSample ? 1 : 0,
+    connectedCalendars: (organizerSample ? 0 : 1) + realGuestCalendars,
+    sampleCalendars: (organizerSample ? 1 : 0) + sampleCalendarGuests.length,
     voters: respondents.filter((r) => Object.keys(r.votes).length > 0).length,
     statements: statementGuests.size,
   });
@@ -112,6 +119,7 @@ export async function loadDashboard(poll: Poll): Promise<Dashboard> {
     basis,
     waiting,
     needsReconnect: guests.filter((_, i) => calendars[i].state === "needs_reconnect").map((g) => g.name),
+    sampleCalendarGuests,
     noClearFit: clearFitMissing,
     failedEmails: failed.count ?? 0,
     facts,

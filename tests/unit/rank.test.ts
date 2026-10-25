@@ -101,6 +101,15 @@ describe("labelFor", () => {
     expect(labelFor({ ...a(1), unmarked: ["Priya"] }, false)).toBe("Works well");
   });
 
+  it("never lets blanks alone make a time Not recommended", () => {
+    expect(labelFor({ ...a(40), unmarked: ["Sam", "Leo", "Mei"], blankPoints: 25 }, false)).toBe("Works with trade-offs");
+  });
+
+  it("still marks a time Not recommended when it's the prefer-nots, not the blanks, that add up", () => {
+    expect(labelFor({ ...a(27), unmarked: [], blankPoints: 0 }, false)).toBe("Not recommended");
+    expect(labelFor({ ...a(40), unmarked: ["Mei"], blankPoints: 5 }, false)).toBe("Not recommended");
+  });
+
   it("raises the bar when the organizer only wants to meet if necessary", () => {
     expect(labelFor(a(2), true)).toBe("Works well");
     expect(labelFor(a(6), true)).toBe("Works with trade-offs");
@@ -163,7 +172,24 @@ describe("blanks from people who answered", () => {
     });
     expect(r[0].number).toBe(2);
     expect(r[1].unmarked).toEqual(["Priya"]);
-    expect(r[1].penalties).toEqual([{ reason: "Priya left this time blank", points: 1, person: "Priya" }]);
+    expect(r[1].penalties).toEqual([{ reason: "Priya left this time blank", points: 5, person: "Priya" }]);
+  });
+
+  it("don't let a time nobody has seen beat one most people said yes to", () => {
+    // From the learner's dashboard: a time suggested late has one yes and blanks from the rest.
+    const late = { ...o2, source: "ai_added" as const };
+    const r = rank([o1, late], {
+      rules: rules(),
+      respondents: [
+        guest("Sam", { o1: "yes" }),
+        guest("Priya", { o1: "yes", o2: "yes" }),
+        guest("Leo", { o1: "no" }),
+      ],
+    });
+    expect(r[0].option.id).toBe("o1");
+    expect(r[1].unmarked).toEqual(["Sam", "Leo"]);
+    expect(r[1].penalties[0].reason).toBe("Sam must attend but left this time blank");
+    expect(r[1].label).toBe("Works with trade-offs");
   });
 });
 

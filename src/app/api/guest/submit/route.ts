@@ -1,9 +1,21 @@
 import { after } from "next/server";
 import { z } from "zod";
 import { isValidZone } from "@/lib/engine/time";
-import { EmailTakenError, getOptions, getPollByToken, saveResponse, statusOf } from "@/lib/db/polls";
+import {
+  EmailTakenError,
+  getGuestByEmail,
+  getOptions,
+  getPollByToken,
+  issueClaimToken,
+  saveResponse,
+  statusOf,
+} from "@/lib/db/polls";
+import { sendEmail } from "@/lib/email/send";
+import { privateLinkEmail } from "@/lib/email/templates";
 import { readGuestToken, writeGuestToken } from "@/lib/guest/cookie";
 import { afterGuestResponse } from "@/lib/polls/actions";
+import { privateLink } from "@/lib/polls/meetAgain";
+import { allow } from "@/lib/rateLimit";
 
 const body = z.object({
   token: z.string().min(10).max(64),
@@ -45,10 +57,28 @@ export async function POST(request: Request) {
     });
   } catch (e) {
     if (!(e instanceof EmailTakenError)) throw e;
+    // Only the owner of that address can take those answers over: they get a private link by email.
+    const existing = await getGuestByEmail(poll.id, input.email);
+    if (existing && allow(`private-link:${existing.id}`, 3, 60 * 60_000)) {
+      const claim = await issueClaimToken(existing.id);
+      const origin = new URL(request.url).origin;
+      after(() =>
+        sendEmail({
+          kind: "private_link",
+          to: existing.email,
+          pollId: poll.id,
+          ...privateLinkEmail({
+            guestName: existing.name,
+            title: poll.title,
+            link: privateLink(origin, poll.shareToken, claim),
+          }),
+        }),
+      );
+    }
     return Response.json(
       {
         error:
-          "Someone already answered this poll with that email. Open the link on the device you used then, or use a different email.",
+          "That email already has answers on this poll. We've emailed a private link to that address: open it to see or change those answers here.",
       },
       { status: 409 },
     );

@@ -80,3 +80,30 @@ export function newOptionsEmail(i: {
     html: wrap("New times were added", lines, { href: i.pollUrl, label: "Mark the new times" }),
   };
 }
+
+export function meetAgainEmail(i: { guestName: string; organizerName: string; title: string; link: string }) {
+  const headline = `${i.organizerName} is meeting the group again`;
+  const lines = [
+    `Hi ${i.guestName},`,
+    `${i.organizerName} started a new poll, "${i.title}", with the same group. You asked to be remembered, so your calendar has already answered for you.`,
+    "Open your link to see or change your answers. To stop being included, untick \"remember me\" or disconnect your calendar there.",
+  ];
+  return {
+    subject: `${i.title}: your calendar answered for you`,
+    text: `${lines.join("\n\n")}\n\n${i.link}\n`,
+    html: wrap(headline, lines, { href: i.link, label: "See my answers" }),
+  };
+}
+
+export function privateLinkEmail(i: { guestName: string; title: string; link: string }) {
+  const lines = [
+    `Hi ${i.guestName},`,
+    `Someone opened "${i.title}" and tried to answer with this email address, which already has answers on the poll.`,
+    "If that was you, open your private link to see or change your answers on this device. If it wasn't, you can ignore this email: nothing was changed.",
+  ];
+  return {
+    subject: `${i.title}: your private link`,
+    text: `${lines.join("\n\n")}\n\n${i.link}\n`,
+    html: wrap("Your private link", lines, { href: i.link, label: "See my answers" }),
+  };
+}

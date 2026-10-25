@@ -12,13 +12,15 @@ How to fill each field:
 - ranges: every concrete time range they said they CAN do, inside the poll's dates. Use the guest's timezone. date is yyyy-MM-dd, start and end are HH:mm (24-hour).
   "afternoons" = 12:00 to 17:00, "mornings" = 09:00 to 12:00, "evenings" = 17:00 to 21:00, "any time" or a whole day = 09:00 to 18:00, unless they give exact times.
   Expand "Tuesday or Wednesday afternoons" into one range per matching date in the poll's dates.
-  "next week" = next Monday to Sunday; "this week" = today until Sunday. Never return a date outside the poll's dates.
+  If they only name a period without hours ("prefer next week", "mostly free Thursday", "anytime"), treat it as 09:00 to 18:00 on those dates and say so in the restatement, so they can correct it.
+  "this week" and "next week" mean exactly the calendar weeks given in the message (Monday to Sunday), so on a Sunday "next week" starts tomorrow. If the guest clearly means something else, follow them and note it in ambiguous.
+  Never return a date outside the poll's dates. If what they want falls entirely outside them, return empty ranges and say so plainly in the restatement.
 - timezone: the guest's timezone as given, unless they clearly state another (BST/UK → Europe/London).
 - preferencesSummary: a short line the organizer will read ("Prefers Tuesday or Wednesday afternoons; can't do Mondays"), or null.
 - preferences: things to avoid or prefer, as rules about this guest (appliesTo is the guest's name). "not Mondays" → {type:"avoid", strength:"soft", days:[1], weight:2}. Use days (1 = Monday … 7 = Sunday), timeOfDay (morning, afternoon, evening, night) or between (HH:mm). strength is always "soft".
 - ambiguous: short quotes of anything you were unsure about. Empty if none.
 
-If the text says nothing about availability, return empty ranges and put the text in ambiguous.
+If the text says nothing about availability or preferences, return empty ranges, null preferencesSummary and put the text in ambiguous.
 
 Reply with only a JSON object matching this JSON Schema:
 ${JSON.stringify(z.toJSONSchema(parsedStatementSchema))}`;
@@ -29,7 +31,11 @@ export function parseStatementPrompt(i: {
   guestName: string;
   window: { startDate: string; endDate: string };
 }) {
+  // Code works out the calendar weeks so the model never has to count days.
+  const monday = i.today.startOf("week");
+  const week = (from: DateTime) => `${from.toISODate()} to ${from.plus({ days: 6 }).toISODate()}`;
   return `Today is ${i.today.toFormat("cccc yyyy-MM-dd")}. The guest's timezone is ${i.today.zoneName}. The guest's name is ${i.guestName}.
+"This week" is ${week(monday)}. "Next week" is ${week(monday.plus({ weeks: 1 }))}.
 The poll's dates are ${i.window.startDate} to ${i.window.endDate}.
 
 What the guest wrote:

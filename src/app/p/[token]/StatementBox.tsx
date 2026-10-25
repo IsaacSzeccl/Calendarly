@@ -13,7 +13,15 @@ const OUTCOME: Record<string, string> = {
   busy: "Those times don't work for the organizer (they're busy, or it's outside the times they set), so nothing new was added. Your note was still passed on.",
   duplicate: "Those times are already in the poll, so nothing new was added. Your note was passed on.",
   cap: "This poll already has as many suggested times as it can take. Your note was passed on.",
+  note: "Your note was passed on to the organizer. No new times were added.",
 };
+
+function datesLabel(d: { startDate: string; endDate: string }): string {
+  const f = (iso: string) => DateTime.fromISO(iso).toFormat("ccc d LLL");
+  return `${f(d.startDate)} – ${f(d.endDate)}`;
+}
+
+type Pending = { id: string; interpretation: Interpretation; pollDates: { startDate: string; endDate: string } };
 
 function zones(extra: string[]): string[] {
   const all = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
@@ -23,7 +31,7 @@ function zones(extra: string[]): string[] {
 /**
  * The plain-language box near the end of the guest form. The guest sees what
  * the AI understood (dates, times, timezone) and nothing is added until they
- * press "Looks right".
+ * confirms. Words with no times inside the poll can still be passed on as a note.
  */
 export function StatementBox({
   token,
@@ -39,7 +47,7 @@ export function StatementBox({
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<"reading" | "adding" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState<{ id: string; interpretation: Interpretation } | null>(null);
+  const [pending, setPending] = useState<Pending | null>(null);
   const [tz, setTz] = useState(zone);
   const [done, setDone] = useState<string | null>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -62,7 +70,7 @@ export function StatementBox({
     try {
       if (!(await ensureSaved())) return;
       const json = await call("/api/guest/statement", { token, text, timezone: zone });
-      setPending({ id: json.statementId, interpretation: json.interpretation });
+      setPending({ id: json.statementId, interpretation: json.interpretation, pollDates: json.pollDates });
       setTz(json.interpretation.timezone);
     } catch (e) {
       setError(e instanceof Error ? e.message : "That didn't work. Try again.");
@@ -97,9 +105,12 @@ export function StatementBox({
     <section aria-labelledby="say" className="space-y-4">
       <div>
         <h2 id="say" className="text-2xl">
-          None of these work? Say when you can.
+          Suggest a different time
         </h2>
-        <p className="text-pencil">Write it your way. You'll see what I understood before anything is added.</p>
+        <p className="text-pencil">
+          Can't make the times above? Tell the organizer when you can, in your own words. You'll see what I
+          understood before anything is added.
+        </p>
       </div>
       <Field label="When are you free?">
         <textarea
@@ -126,28 +137,37 @@ export function StatementBox({
         <div className="space-y-4 rounded-md border border-ribbon/40 bg-paper-deep p-5" aria-live="polite">
           <h3 className="text-xl">What I understood</h3>
           <p>{pending.interpretation.restatement}</p>
-          <ul className="divide-y divide-rule border-y border-rule">
-            {pending.interpretation.ranges.map((r, i) => {
-              const s = DateTime.fromISO(`${r.date}T${r.start}`, { zone: tz });
-              return (
-                <li key={i} className="tabular flex justify-between py-2">
-                  <span>{s.toFormat("cccc d LLLL")}</span>
-                  <span>
-                    {r.start}–{r.end}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-          <Field label="In this timezone">
-            <select className={`${inputClass} sm:max-w-sm`} value={tz} onChange={(e) => setTz(e.target.value)}>
-              {zones([tz, zone]).map((z) => (
-                <option key={z} value={z}>
-                  {z.replace(/_/g, " ")} ({zoneShort(z)})
-                </option>
-              ))}
-            </select>
-          </Field>
+          {pending.interpretation.ranges.length === 0 ? (
+            <p className="rounded-md bg-paper p-3 text-sm">
+              This poll only covers {datesLabel(pending.pollDates)}. You can pass this on to the organizer as a
+              note, or write times between those dates.
+            </p>
+          ) : (
+            <>
+              <ul className="divide-y divide-rule border-y border-rule">
+                {pending.interpretation.ranges.map((r, i) => {
+                  const s = DateTime.fromISO(`${r.date}T${r.start}`, { zone: tz });
+                  return (
+                    <li key={i} className="tabular flex justify-between py-2">
+                      <span>{s.toFormat("cccc d LLLL")}</span>
+                      <span>
+                        {r.start}–{r.end}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <Field label="In this timezone">
+                <select className={`${inputClass} sm:max-w-sm`} value={tz} onChange={(e) => setTz(e.target.value)}>
+                  {zones([tz, zone]).map((z) => (
+                    <option key={z} value={z}>
+                      {z.replace(/_/g, " ")} ({zoneShort(z)})
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </>
+          )}
           {pending.interpretation.preferencesSummary && (
             <p className="text-sm text-pencil">
               The organizer will see: “{pending.interpretation.preferencesSummary}”
@@ -160,7 +180,11 @@ export function StatementBox({
           )}
           <div className="flex flex-wrap gap-3">
             <Button type="button" onClick={confirm} disabled={busy !== null}>
-              {busy === "adding" ? "Adding…" : "Looks right"}
+              {busy === "adding"
+                ? "Saving…"
+                : pending.interpretation.ranges.length === 0
+                  ? "Pass it on as a note"
+                  : "Looks right, add these"}
             </Button>
             <Button
               variant="quiet"

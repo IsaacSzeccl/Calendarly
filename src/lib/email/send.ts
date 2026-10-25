@@ -2,7 +2,7 @@ import "server-only";
 import nodemailer, { type Transporter } from "nodemailer";
 import { db, dbConfigured } from "@/lib/db/client";
 
-export type EmailKind = "confirmation" | "new_options" | "poll_update";
+export type EmailKind = "confirmation" | "new_options" | "poll_update" | "meet_again" | "private_link";
 
 export type Email = { kind: EmailKind; to: string; pollId: string; subject: string; text: string; html: string };
 

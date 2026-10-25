@@ -180,4 +180,33 @@ export const RECORDINGS: Recording[] = [
       ambiguous: ["next week"],
     },
   },
+  {
+    // Recorded live on Sunday 25 Oct with the poll on Mon 26 – Fri 30 Oct.
+    job: "parseStatement",
+    match: "less free this week",
+    answer: {
+      restatement:
+        "You'd prefer to meet next week rather than this week, so I've noted you as generally available on the poll's days, 09:00–18:00 — let us know if you'd like to narrow that down.",
+      ranges: [0, 1, 2, 3, 4].map((n) => ({ date: `@W+${n}`, start: "09:00", end: "18:00" })),
+      timezone: "@TZ",
+      preferencesSummary: "Prefers next week; less free this week",
+      preferences: [
+        { appliesTo: "@NAME", type: "prefer", strength: "soft", weight: 2, description: "Prefers meeting next week over this week" },
+      ],
+      ambiguous: ['"I am less free this week" — no specific times given'],
+    },
+  },
+  {
+    // Nothing inside the poll's dates: passed on as a note, no times added.
+    job: "parseStatement",
+    match: "only free in december",
+    answer: {
+      restatement: "You're only free in December, which is after this poll's dates, so there are no times to add.",
+      ranges: [],
+      timezone: "@TZ",
+      preferencesSummary: "Only free in December",
+      preferences: [],
+      ambiguous: [],
+    },
+  },
 ];

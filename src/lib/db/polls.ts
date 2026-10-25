@@ -36,6 +36,8 @@ export type Guest = {
   preferences: Constraint[];
   calendarConnectionId: string | null;
   remember: boolean;
+  /** Single-use code for the guest's private link, while one is outstanding. */
+  claimToken: string | null;
   /** A seeded demo guest with made-up answers. */
   isSample: boolean;
 };
@@ -90,6 +92,7 @@ function toGuest(r: Row<"guests">): Guest {
     preferences: (r.preferences ?? []) as unknown as Constraint[],
     calendarConnectionId: r.calendar_connection_id,
     remember: r.remember,
+    claimToken: r.claim_token,
     isSample: r.is_sample,
   };
 }
@@ -158,18 +161,22 @@ export async function addOptions(
 }
 
 /**
- * Add one AI-suggested slot. Returns null when the database refuses it: the
- * poll already has 3 (enforced by a trigger) or the same start time exists.
+ * Add a time a guest suggested, from their typed statement or their connected calendar.
+ * Returns null when the database refuses it: a duplicate, or the poll's cap is reached.
  */
-export async function addAiOption(pollId: string, slot: Interval, statementId: string): Promise<SlotOption | null> {
+export async function addGuestOption(
+  pollId: string,
+  slot: Interval,
+  from: { statementId: string } | "calendar",
+): Promise<SlotOption | null> {
   const result = await db()
     .from("options")
     .insert({
       poll_id: pollId,
       starts_at: new Date(slot.start).toISOString(),
       ends_at: new Date(slot.end).toISOString(),
-      source: "ai_added",
-      added_by_statement_id: statementId,
+      source: from === "calendar" ? "guest_added" : "ai_added",
+      added_by_statement_id: from === "calendar" ? null : from.statementId,
     })
     .select()
     .single();
@@ -300,4 +307,86 @@ export async function updatePoll(
   fields: Database["public"]["Tables"]["polls"]["Update"],
 ): Promise<void> {
   ok(await db().from("polls").update(fields).eq("id", id), "update poll");
+}
+
+/**
+ * The guest's "remember me for future meetings with this organizer" choice.
+ * Saying no reaches every poll this calendar was brought into, so no earlier
+ * poll can bring them along again.
+ */
+export async function setRemember(guest: Guest, remember: boolean): Promise<void> {
+  const update = db().from("guests").update({ remember });
+  ok(
+    !remember && guest.calendarConnectionId
+      ? await update.eq("calendar_connection_id", guest.calendarConnectionId)
+      : await update.eq("id", guest.id),
+    "save remember me",
+  );
+}
+
+/** A fresh single-use code for this guest's private link. */
+export async function issueClaimToken(guestId: string): Promise<string> {
+  const claim = newToken();
+  ok(await db().from("guests").update({ claim_token: claim }).eq("id", guestId), "issue private link");
+  return claim;
+}
+
+/** Use up a private-link code: returns that guest's token once, then never again. */
+export async function takeClaim(pollId: string, claim: string): Promise<string | null> {
+  const row = maybe(
+    await db()
+      .from("guests")
+      .update({ claim_token: null })
+      .eq("poll_id", pollId)
+      .eq("claim_token", claim)
+      .select("guest_token")
+      .maybeSingle(),
+    "use private link",
+  );
+  return row?.guest_token ?? null;
+}
+
+export async function getGuestByEmail(pollId: string, email: string): Promise<Guest | null> {
+  const row = maybe(
+    await db()
+      .from("guests")
+      .select()
+      .eq("poll_id", pollId)
+      // Matches guests_poll_email_idx (lower(email)); wildcards in the address are escaped.
+      .ilike("email", email.replace(/[\\%_]/g, "\\$&"))
+      .maybeSingle(),
+    "find guest by email",
+  );
+  return row ? toGuest(row) : null;
+}
+
+/** Disconnecting a calendar also withdraws "remember me" everywhere that calendar was used. */
+export async function forgetConnection(connectionId: string): Promise<void> {
+  ok(
+    await db().from("guests").update({ remember: false }).eq("calendar_connection_id", connectionId),
+    "withdraw remember me",
+  );
+}
+
+/** Meet again: the same person in a new poll, with their calendar and consent, and a fresh private token. */
+export async function copyGuestInto(pollId: string, g: Guest): Promise<Guest> {
+  return toGuest(
+    must(
+      await db()
+        .from("guests")
+        .insert({
+          poll_id: pollId,
+          name: g.name,
+          email: g.email,
+          timezone: g.timezone,
+          guest_token: newToken(),
+          claim_token: newToken(),
+          calendar_connection_id: g.calendarConnectionId,
+          remember: true,
+        })
+        .select()
+        .single(),
+      "copy guest",
+    ),
+  );
 }

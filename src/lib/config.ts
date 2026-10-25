@@ -6,8 +6,8 @@ export const config = {
   slotStepMinutes: 15,
   /** How many options a new poll starts with. */
   initialOptionCount: 5,
-  /** Most AI-added slots a single poll can ever get. */
-  aiSlotCap: 3,
+  /** Most times guests can add to one poll, from typed statements and calendars together. */
+  guestSlotCap: 3,
   /** Default meeting length when the organizer doesn't say. */
   defaultDurationMinutes: 60,
   /** Nobody is offered a time outside these hours, in their own timezone. */
@@ -22,8 +22,12 @@ export const config = {
     no: 10,
     requiredNo: 1000,
     preferNot: 3,
-    /** Someone answered the poll but left this time blank. */
-    unmarked: 1,
+    /**
+     * Someone answered the poll but left this time blank (often a time added after they
+     * answered). Unknown, so about half a "no"; more when that person must attend.
+     */
+    unmarked: 5,
+    requiredUnmarked: 15,
     softConstraint: 2,
     /** Applied per option already chosen on the same day, when picking initial options. */
     sameDay: 1.5,

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { rangesToIntervals, toPreferences } from "@/lib/ai/parseStatement";
 import { providerFor } from "@/lib/calendar";
 import { CalendarUnavailableError } from "@/lib/calendar/provider";
-import { addAiOption, getGuestByToken, getOptions, getPollByToken, statusOf } from "@/lib/db/polls";
+import { addGuestOption, getGuestByToken, getOptions, getPollByToken, statusOf } from "@/lib/db/polls";
 import {
   claimConfirmation,
   getStatement,
@@ -51,8 +51,9 @@ export async function POST(request: Request) {
   const calendar = poll.organizerCalendar;
   let organizerBusy, existing;
   try {
+    // A note with no times needs nothing from the organizer's calendar.
     [organizerBusy, existing] = await Promise.all([
-      providerFor(calendar).getBusy(calendar, window.start, window.end),
+      ranges.length ? providerFor(calendar).getBusy(calendar, window.start, window.end) : [],
       getOptions(poll.id),
     ]);
   } catch (e) {
@@ -74,13 +75,13 @@ export async function POST(request: Request) {
       rules: poll.rules,
       organizerBusy,
       existing,
-      aiAddedSoFar: existing.filter((o) => o.source === "ai_added").length,
+      aiAddedSoFar: existing.filter((o) => o.source !== "organizer_free").length,
       now: Date.now(),
     });
     // One at a time: the database has the final say on the cap and on duplicates.
     added = [];
     for (const slot of result.added) {
-      const option = await addAiOption(poll.id, slot, statement.id);
+      const option = await addGuestOption(poll.id, slot, { statementId: statement.id });
       if (option) added.push(option);
     }
     // The guest suggested these times, so they start as a "yes" they can change.
@@ -102,7 +103,15 @@ export async function POST(request: Request) {
 
   const why = new Set(result.skipped.map((s) => s.why));
   const capped = why.has("cap") || added.length < result.added.length;
-  const outcome = added.length ? "added" : capped ? "cap" : why.has("duplicate") && !why.has("busy") ? "duplicate" : "busy";
+  const outcome = added.length
+    ? "added"
+    : ranges.length === 0
+      ? "note"
+      : capped
+        ? "cap"
+        : why.has("duplicate") && !why.has("busy")
+          ? "duplicate"
+          : "busy";
   return Response.json({
     outcome,
     added: added.map(({ id, start, end }) => ({ id, start, end })),

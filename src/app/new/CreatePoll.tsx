@@ -27,6 +27,9 @@ export type Account = {
   calendarResult: string | null;
 };
 
+/** Meet again: the earlier poll and the remembered guests coming along. */
+export type Again = { pollId: string; title: string; people: string[] };
+
 const CALENDAR_RESULT: Record<string, string> = {
   connected: "Your Google Calendar is connected. Times now come from your real free time.",
   declined: "Calendar access wasn't given, so I can't see your free time yet.",
@@ -89,7 +92,7 @@ function AccountStep({ account }: { account: Account }) {
   return null;
 }
 
-export function CreatePoll({ account }: { account: Account }) {
+export function CreatePoll({ account, again }: { account: Account; again: Again | null }) {
   const signedIn = account.signedIn && account.calendar !== null;
   const [text, setText] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -109,7 +112,11 @@ export function CreatePoll({ account }: { account: Account }) {
       const res = await fetch("/api/polls", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ draft, closeAt: closeAt ? new Date(closeAt).toISOString() : null }),
+        body: JSON.stringify({
+          draft,
+          closeAt: closeAt ? new Date(closeAt).toISOString() : null,
+          again: again?.pollId,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "The poll wasn't created. Try again.");
@@ -134,7 +141,7 @@ export function CreatePoll({ account }: { account: Account }) {
       const res = await fetch("/api/polls/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, again: again?.pollId }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Something went wrong. Try again.");
@@ -175,6 +182,14 @@ export function CreatePoll({ account }: { account: Account }) {
         </Notice>
       )}
       <AccountStep account={account} />
+      {again && (
+        <Notice>
+          Meeting again after “{again.title}”.{" "}
+          {again.people.length > 0
+            ? `${again.people.join(", ")} ${again.people.length === 1 ? "comes along: their calendar answers" : "come along: their calendars answer"} for them, and the first times favour when they're free.`
+            : "Nobody from that poll asked to be remembered with a working calendar, so this starts fresh."}
+        </Notice>
+      )}
       <section className="space-y-3">
         <Field label="Describe the meeting" hint="Who's coming, roughly when, how long, and anything people can't do.">
           <textarea

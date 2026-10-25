@@ -52,6 +52,27 @@ describe(`parseStatement golden cases (${live ? "LIVE model" : "recorded answers
     timeout,
   );
 
+  it(
+    "Read on a Sunday, 'prefer next week' means the poll's week starting tomorrow",
+    async () => {
+      // The learner's own case: Sunday 25 Oct, poll Mon 26 – Fri 30 Oct.
+      const sundayWindow = { startDate: "2026-10-26", endDate: "2026-10-30" };
+      const res = await parseStatement({
+        text: "I am less free this week. Prefer a meeting next week.",
+        timezone: ZONE,
+        guestName: "Priya",
+        window: sundayWindow,
+        now: DateTime.fromISO("2026-10-25T14:00", { zone: ZONE }).toMillis(),
+      });
+      if (!res.ok) throw new Error(`parseStatement failed: ${res.error}`);
+      expect(res.data.ranges.length).toBeGreaterThan(0);
+      for (const r of res.data.ranges) {
+        expect(r.date >= sundayWindow.startDate && r.date <= sundayWindow.endDate).toBe(true);
+      }
+    },
+    timeout,
+  );
+
   it.skipIf(live)("Unreadable input fails plainly after one retry", async () => {
     const res = await parseStatement({ text: "zzzz", timezone: ZONE, guestName: "Priya", window });
     expect(res.ok).toBe(false);

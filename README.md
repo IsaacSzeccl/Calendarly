@@ -19,7 +19,7 @@ Without signing in you can try the description step on a sample calendar. To sig
 - `http://localhost:3000/api/calendar/callback` (and the same path on the deployed domain)
 - `https://<your-project>.supabase.co/auth/v1/callback` (Supabase sign-in)
 
-To try everything without Google, start with `E2E_TEST_MODE=1 npm run dev` and use the "Test sign-in" link. It signs you in as a test organizer with a sample calendar. Never set `E2E_TEST_MODE` in production.
+To try everything without Google, start with `E2E_TEST_MODE=1 npm run dev` and use the "Test sign-in" link. It signs you in as a test organizer with a sample calendar, and guests get a "Use a sample calendar (test mode)" link so you can try calendar answers, calendar-suggested times and "meet again". Never set `E2E_TEST_MODE` in production.
 
 ## Tests
 

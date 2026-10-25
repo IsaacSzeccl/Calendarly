@@ -3,7 +3,7 @@ import { getOrganizer } from "@/lib/auth/organizer";
 import { revokeToken } from "@/lib/calendar/google";
 import { db, ok } from "@/lib/db/client";
 import { deleteConnection, findConnection } from "@/lib/db/connections";
-import { getGuestByToken, getPollByToken } from "@/lib/db/polls";
+import { forgetConnection, getGuestByToken, getPollByToken } from "@/lib/db/polls";
 import { readGuestToken } from "@/lib/guest/cookie";
 
 const body = z.object({ for: z.enum(["organizer", "guest"]), token: z.string().optional() });
@@ -20,7 +20,10 @@ export async function POST(request: Request) {
     const guest = poll && guestToken ? await getGuestByToken(poll.id, guestToken) : null;
     if (!guest) return Response.json({ error: "Nothing to disconnect." }, { status: 404 });
     connectionId = guest.calendarConnectionId;
-    ok(await db().from("guests").update({ calendar_connection_id: null }).eq("id", guest.id), "unlink guest calendar");
+    ok(
+      await db().from("guests").update({ calendar_connection_id: null, remember: false }).eq("id", guest.id),
+      "unlink guest calendar",
+    );
   } else {
     const organizer = await getOrganizer();
     // Look the connection up whatever its state, so an expired one is still removed and revoked.
@@ -28,6 +31,8 @@ export async function POST(request: Request) {
   }
   if (!connectionId) return Response.json({ ok: true });
 
+  // Without a calendar, "remember me" has nothing to answer with, so the consent goes too.
+  await forgetConnection(connectionId);
   const token = await deleteConnection(connectionId);
   if (token) await revokeToken(token);
   return Response.json({ ok: true });

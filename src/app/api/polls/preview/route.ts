@@ -4,14 +4,20 @@ import { getOrganizer } from "@/lib/auth/organizer";
 import { CalendarUnavailableError, inZone } from "@/lib/calendar/provider";
 import { isValidZone } from "@/lib/engine/time";
 import { allow } from "@/lib/rateLimit";
-import { previewOptions } from "@/lib/polls/preview";
+import { rosterBusy, rosterFrom } from "@/lib/polls/meetAgain";
+import { previewOptions, windowRange } from "@/lib/polls/preview";
+import { withPeople } from "@/lib/polls/roster";
 import { draftSchema } from "@/lib/polls/schema";
 
 const body = z.union([
   // First pass: plain language, read by the model.
-  z.object({ text: z.string().trim().min(3).max(2000), timezone: z.string().refine(isValidZone) }),
+  z.object({
+    text: z.string().trim().min(3).max(2000),
+    timezone: z.string().refine(isValidZone),
+    again: z.uuid().optional(),
+  }),
   // Later passes: the organizer edited the summary; no model call.
-  z.object({ draft: draftSchema }),
+  z.object({ draft: draftSchema, again: z.uuid().optional() }),
 ]);
 
 export async function POST(request: Request) {
@@ -46,10 +52,18 @@ export async function POST(request: Request) {
     draft = parsed.data.draft;
   }
 
+  // Meet again: the people coming along join the list, and times their calendars are free come first.
+  const roster = organizer && parsed.data.again ? await rosterFrom(parsed.data.again, organizer.id) : null;
+  if (roster) {
+    const rules = withPeople(draft.rules, roster.people);
+    draft = { ...draft, rules, expectedCount: Math.max(draft.expectedCount, rules.people.length + 1) };
+  }
+
   // Signed-in organizers see their real free time; visitors trying it out see a sample calendar.
   const account = inZone(organizer?.calendar ?? { kind: "sample", key: "organizer" }, draft.rules.organizerTimezone);
   try {
-    const { options, poolSize } = await previewOptions(draft.rules, account);
+    const othersBusy = roster ? await rosterBusy(roster.people, windowRange(draft.rules)) : [];
+    const { options, poolSize } = await previewOptions(draft.rules, account, undefined, othersBusy);
     return Response.json({ draft, options, poolSize, calendar: account.kind });
   } catch (e) {
     if (e instanceof CalendarUnavailableError) {

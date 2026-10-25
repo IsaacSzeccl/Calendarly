@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { explain } from "@/lib/ai/explain";
 import { fallbackExplanation } from "@/lib/ai/explainText";
 import type { Explanation } from "@/lib/ai/schemas";
@@ -12,6 +12,7 @@ import { getPoll } from "@/lib/db/polls";
 import type { Label } from "@/lib/engine/types";
 import { dateTimeLabel, slotLabel, zoneShort } from "@/lib/format";
 import { loadDashboard, type Dashboard } from "@/lib/polls/dashboard";
+import { whoComesAlong } from "@/lib/polls/roster";
 import { StatusIcon, StatusMark } from "@/components/Availability";
 import { Notice } from "@/components/ui";
 import { ClosePollButton, CopyLink, PickButton, RefreshButton } from "./controls";
@@ -34,7 +35,7 @@ function AiNote({ explanation, basis, pending }: { explanation: Explanation | nu
         Note on the times
       </h2>
       {explanation ? (
-        <div className="space-y-3 font-serif text-[1.15rem] leading-relaxed">
+        <div className="space-y-3 font-serif text-[1.15rem] leading-relaxed lg:text-[1.05rem]">
           <p>{explanation.summary}</p>
           {explanation.conditional.map((line, i) => (
             <p key={i}>{line}</p>
@@ -53,14 +54,32 @@ function Ranking({ d, explanation, canPick }: { d: Dashboard; explanation: Expla
   const lines = new Map(explanation.perOption.map((p) => [p.option, p.text]));
   return (
     <ol className="border-t border-rule">
-      {d.ranked.map((a) => {
+      {d.ranked.map((a, rank) => {
         const picked = d.poll.finalOptionId === a.option.id;
+        // The top time is highlighted; if even that one leaves someone out, it's the closest fit, not the best.
+        const top = rank === 0;
+        const closest = a.cannotCome.length > 0;
         return (
-          <li key={a.option.id} className="grid grid-cols-[2.5rem_1fr] gap-x-3 border-b border-rule py-4">
-            <span className="font-serif text-3xl leading-none text-pencil" aria-hidden>
+          <li
+            key={a.option.id}
+            className={`grid grid-cols-[2.5rem_1fr] gap-x-3 border-b py-4 ${
+              top
+                ? `-mx-3 my-2 rounded-md border-2 px-3 ${closest ? "border-maybe bg-maybe-wash/40" : "border-yes bg-yes-wash/50"}`
+                : "border-rule"
+            }`}
+          >
+            <span className={`font-serif text-3xl leading-none ${top ? "text-ink" : "text-pencil"}`} aria-hidden>
               {a.number}
             </span>
             <div className="space-y-2">
+              {top && (
+                <p className={`inline-flex items-center gap-1.5 text-sm font-semibold ${closest ? "text-maybe" : "text-yes"}`}>
+                  <svg aria-hidden viewBox="0 0 20 20" className="size-4 fill-current">
+                    <path d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z" />
+                  </svg>
+                  {closest ? "Closest fit: no time works for everyone" : "Best time"}
+                </p>
+              )}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <h3 className="font-sans text-lg font-semibold">
                   <span className="sr-only">Option {a.number}: </span>
@@ -88,16 +107,59 @@ function Ranking({ d, explanation, canPick }: { d: Dashboard; explanation: Expla
   );
 }
 
+/** Phones: the note, then the times. Wide screens: the times, with the note pinned beside them. */
+function NoteBeside({ note, children }: { note: ReactNode; children: ReactNode }) {
+  return (
+    <div className="space-y-10 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-x-12 lg:space-y-0">
+      <div className="lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1">{note}</div>
+      <section aria-labelledby="ranking" className="space-y-3 lg:col-start-1 lg:row-start-1">
+        <h2 id="ranking" className="text-2xl">Times, best first</h2>
+        {children}
+      </section>
+    </div>
+  );
+}
+
 async function NoteAndRanking({ d, canPick }: { d: Dashboard; canPick: boolean }) {
   const { explanation } = await explain(d.facts, { find: findExplanation });
   return (
-    <>
-      <AiNote explanation={explanation} basis={d.basis} />
-      <section aria-labelledby="ranking" className="space-y-3">
-        <h2 id="ranking" className="text-2xl">Times, best first</h2>
-        <Ranking d={d} explanation={explanation} canPick={canPick} />
-      </section>
-    </>
+    <NoteBeside note={<AiNote explanation={explanation} basis={d.basis} />}>
+      <Ranking d={d} explanation={explanation} canPick={canPick} />
+    </NoteBeside>
+  );
+}
+
+/** Meet again: start the next poll with the guests who asked to be remembered. */
+function MeetAgain({ d }: { d: Dashboard }) {
+  // Same rule as /new: an expired calendar can't answer, so that person isn't listed.
+  const people = whoComesAlong(d.guests).filter((g) => !d.needsReconnect.includes(g.name));
+  return (
+    <section aria-labelledby="again" className="max-w-2xl space-y-3 border-t border-rule pt-8">
+      <h2 id="again" className="text-2xl">Meeting again?</h2>
+      {people.length > 0 ? (
+        <>
+          <p className="text-pencil">
+            {people.map((p) => p.name).join(", ")} asked to be remembered.{" "}
+            {people.length === 1 ? "Their calendar answers" : "Their calendars answer"} your next poll for them, so
+            they won't need to fill it in.
+          </p>
+          <Link
+            href={`/new?again=${d.poll.id}`}
+            className="inline-flex min-h-11 items-center rounded-md bg-ribbon px-4 font-semibold text-ribbon-ink hover:brightness-110"
+          >
+            New meeting with this group
+          </Link>
+        </>
+      ) : (
+        <p className="text-pencil">
+          Nobody has asked to be remembered yet. Guests who connect a calendar can tick "remember me", and their
+          calendar answers your next poll for them.
+        </p>
+      )}
+      <p>
+        <Link href="/new" className="underline underline-offset-4">Start a new poll from scratch</Link>
+      </p>
+    </section>
   );
 }
 
@@ -163,9 +225,11 @@ function People({ d }: { d: Dashboard }) {
                 {g.isSample && "sample guest with made-up answers, "}
                 {d.needsReconnect.includes(g.name)
                   ? "calendar needs reconnecting"
-                  : g.calendarConnectionId
-                    ? "calendar connected"
-                    : "answered by hand"}
+                  : d.sampleCalendarGuests.includes(g.id)
+                    ? "sample calendar connected"
+                    : g.calendarConnectionId
+                      ? "calendar connected"
+                      : "answered by hand"}
                 , {zoneShort(g.timezone)}
               </span>
             </div>
@@ -216,7 +280,7 @@ async function DashboardBody({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <div className="space-y-10">
-      <header className="space-y-3">
+      <header className="max-w-2xl space-y-3">
         <h1 className="text-4xl">{poll.title}</h1>
         <p className="text-lg">
           <strong className="font-semibold">{d.completion.text}</strong> have answered
@@ -258,14 +322,10 @@ async function DashboardBody({ params }: { params: Promise<{ id: string }> }) {
 
       <Suspense
         fallback={
-          <>
-            <AiNote explanation={null} basis={d.basis} pending />
-            <section className="space-y-3">
-              <h2 className="text-2xl">Times, best first</h2>
-              {/* Picking waits for the note, so a click can't land on this placeholder list. */}
-              <Ranking d={d} explanation={fallbackExplanation(d.facts)} canPick={false} />
-            </section>
-          </>
+          <NoteBeside note={<AiNote explanation={null} basis={d.basis} pending />}>
+            {/* Picking waits for the note, so a click can't land on this placeholder list. */}
+            <Ranking d={d} explanation={fallbackExplanation(d.facts)} canPick={false} />
+          </NoteBeside>
         }
       >
         <NoteAndRanking d={d} canPick={canPick} />
@@ -274,9 +334,7 @@ async function DashboardBody({ params }: { params: Promise<{ id: string }> }) {
       <VotesTable d={d} />
       <People d={d} />
 
-      <p>
-        <Link href="/new" className="underline underline-offset-4">Start another poll</Link>
-      </p>
+      <MeetAgain d={d} />
     </div>
   );
 }

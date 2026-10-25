@@ -5,7 +5,7 @@ status: approved
 
 # Build Checklist
 
-Build mode: fast. The learner asked for an unattended build ("continue building the code and testing, and only ask me questions at the end"), so hands-on checkpoints move to one session at the end. They can switch to learn mode at any time.
+Build mode: fast. The learner asked for an unattended build ("continue building the code and testing, and only ask me questions at the end"), so hands-on checkpoints move to one session at the end. They can switch to learn mode at any time. Confirmed at the end-of-build session: "Keep fast mode first".
 
 ## Slices
 
@@ -79,7 +79,7 @@ Build mode: fast. The learner asked for an unattended build ("continue building 
   Learner check: Open the live URL on your phone and answer a demo poll as a guest.
   Commit: `Deploy configuration for Vercel`
 
-- [ ] **8. Stretch: meet again with the same group**
+- [x] **8. Stretch: meet again with the same group**
   Becomes usable: A "Remember me for future meetings with this organizer" checkbox for guests, and "New meeting with this group" on the dashboard that reuses consenting guests' calendars. Built only if slices 1-7 are done and tested; otherwise narrated as "next" in the demo.
   Why now: Lowest priority by the learner's decision.
   PRD ref: `prd.md > Product Decisions` (roster and "meet again"), `prd.md > Deferred From the POC`
@@ -91,11 +91,22 @@ Build mode: fast. The learner asked for an unattended build ("continue building 
 
 ## Hands-on Checkpoints
 
-- [ ] Early usable behavior explored: after slice 3 (create, answer, ranking with conditional advice). Moved to the end-of-build session because the learner is away during the build.
-- [ ] Final kick-the-tires exploration and feedback completed
+- [x] Early usable behavior explored: after slice 3 (create, answer, ranking with conditional advice). Moved to the end-of-build session because the learner is away during the build; covered by the learner's first hands-on session (feedback in `Calendarly-changes-v0.1.pdf`).
+- [x] Final kick-the-tires exploration and feedback completed — first round: the learner ran the demo, answered as Priya, tried calendar connect and pushed to GitHub; their notes are the Final Review items below.
 
 ## Final Review
 
+Feedback from the learner's first hands-on session (fixed, verified by the agent; each waits for the learner to retry it):
+
+- [ ] Make the best options more apparent — the top time is highlighted ("Best time", or "Closest fit" when no time suits everyone); on wide screens the ranking and the AI note sit side by side so the best time is visible without scrolling. Fixing it exposed a ranking bug: a late-added time with one "yes" and four blanks outranked one with four "yes" and one "no"; blanks now count as unknown (half a "no").
+- [ ] "Check what I meant" said "I couldn't read that" for "I am less free this week. Prefer a meeting next week." — the model had understood it but named no times inside the poll. Code now gives the model the calendar weeks ("next week" from a Sunday starts tomorrow), vague periods become 09:00–18:00 the guest can correct, and words with no times in the poll can be passed on as a note instead of failing.
+- [ ] "None of these work?" was ambiguous — now "Suggest a different time", with "Can't make the times above? Tell the organizer when you can, in your own words."
+- [ ] CI failed after the push (`Cannot find name 'PageProps'`) — the typecheck now runs `next typegen` first, reproduced and fixed in a clean checkout.
+- [ ] Google "Access blocked: has not completed the verification process" — the OAuth app is in Testing mode; the learner's account must be added as a test user in Google Cloud (learner step).
+- [ ] "Cannot see full screen on computer" — the screenshot was the agent's Playwright test browser, left at phone width (412 px); the app itself fills a desktop window. The dashboard now also uses the extra width.
+- [ ] Better incentives to connect calendars — the calendar card now sits above the times and says what connecting does (fills every answer, suggests times that fit both calendars, gives a truer picture, lets your calendar answer next time); it shows how many others connected.
+- [ ] A connected calendar also suggests new times (learner's answer to question 3) — free for the guest and the organizer, favouring times other connected guests are free, one tap to add, sharing the cap of 3 guest-added times.
+- [ ] Slice 8, meet again, built (learner request).
 - [ ] Final review complete — feedback resolved and learner confirms ready to ship
 
 ## Code Tour and App Map
@@ -138,3 +149,12 @@ Activity mode: not started
 - Reversed: a guest is identified only by their private cookie, never by email — an independent code review showed that matching by email let anyone who knew a guest's address take over their answers and calendar; a second answer with the same email now gets a clear message instead.
 - Fixes from the same review: calendar connections are updated in place so reconnecting keeps old polls working; the AI-slot cap of 3 is also enforced by a database trigger (`20261025020000_ai_slot_cap.sql`); picking a time is claimed atomically so a double click can't create two events; a failed statement confirm no longer uses up the statement; sign-in redirects compare origins (`src/lib/safeNext.ts`); the test sign-in only accepts `test:` ids and never runs in Vercel production; anonymous description previews are limited per IP; clock overlaps are exact to the minute.
 - Slice 7 waits on the learner: the Vercel project `calendarly` exists and is linked to GitHub, but has no environment variables, its `vercel.app` addresses sit behind Vercel's login wall (guests couldn't open poll links), and the production Google redirect URI isn't registered. The agent doesn't enter secrets or push code without being asked. Slice 8 (stretch) is planned after slice 7, so it hasn't started.
+- End-of-build answers: build order approved ("Looks good"); fast mode kept; a connected guest calendar should also suggest new times; don't open a pull request yet. The learner had already pushed the branch, which surfaced the CI failure.
+- Reversed: proposing new slots from a connected guest's calendar is now built (`calendarSuggestions` in the engine, `src/lib/polls/calendarSuggest.ts`, `/api/guest/calendar-add`) — the learner asked for it. Calendar-added times use the existing `guest_added` source and share one cap of 3 with typed suggestions (`20261025030000_guest_slot_cap.sql`); `aiSlotCap` became `guestSlotCap`.
+- Test mode adds "Use a sample calendar (test mode)" for guests, a labeled sample calendar stored as a connection with scope `sample` — Google blocks real guest calendars until the learner's account is a test user, and the end-to-end test needs a calendar it can connect. It is unreachable outside test mode, never revoked with Google, and labeled "sample calendar" on the dashboard.
+- Blanks from people who answered now cost 5 (15 for someone who must attend) instead of 1, and blanks alone can't make a time "Not recommended" — the learner's dashboard showed a time nobody else had seen ranked first.
+- Statement parsing: code computes "this week" and "next week" and passes them to the model; a statement with no times inside the poll but a clear preference is saved as a note (outcome `note`) instead of being rejected.
+- The layout is wider on desktop (`max-w-5xl`); forms keep a reading width and the dashboard puts the AI note beside the ranking.
+- Slice 8 was built before slice 7 — slice 7 waits on the learner's Vercel and Google setup, and the learner asked for slice 8 now. Meet again only brings guests who ticked "remember me" and still have a working calendar connected, because their calendar is what answers for them; it is offered only once a calendar is connected. Copied guests get a "meet_again" email (`20261025040000_meet_again.sql`) with a private link (`/api/guest/claim`) that sets their cookie for the new poll. Disconnecting withdraws "remember me" everywhere that calendar was used. Earlier poll-specific preferences are not copied.
+- An independent review of this round found one high and five medium issues, all fixed and re-checked: unticking "remember me" now clears it on every poll that calendar was brought into (it only cleared one copy, so an earlier poll could still bring the guest along); the private link uses a single-use code (`guests.claim_token`) instead of the guest's long-lived token, and never replaces an identity the browser already has; answering with an email that already has answers emails that address a private link instead of a dead end (this also covers a guest on a second device); blanks are exempted from "Not recommended" only for their own points; calendar suggestions never break the guest page; a note-only statement no longer needs the organizer's calendar. Smaller fixes: suggestions only on open polls, a rate limit on calendar adds, the dashboard lists only people `/new` will bring, the roster dedupes by email, a failed copy never makes the organizer create a poll twice, the test-mode sample calendar removes and revokes a real connection first, and the top time reads "Closest fit" whenever someone can't come. Not fixed (low): two guests adding different but overlapping times at the same moment can both succeed.
+

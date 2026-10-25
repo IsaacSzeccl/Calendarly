@@ -65,8 +65,10 @@ export function chooseInitialOptions(
   pool: Interval[],
   rules: PollRules,
   count: number = config.initialOptionCount,
+  /** Extra penalty points per slot, on top of the organizer's rules. */
+  extra: (slot: Interval) => number = () => 0,
 ): Interval[] {
-  const base = pool.map((slot) => ({ slot, score: ruleScore(slot, rules) }));
+  const base = pool.map((slot) => ({ slot, score: ruleScore(slot, rules) + extra(slot) }));
   const chosen: Interval[] = [];
   const perDay = new Map<string, number>();
   while (chosen.length < count) {
@@ -106,7 +108,7 @@ export function addAiSlots(input: {
   now: number;
   cap?: number;
 }): AddResult {
-  const cap = input.cap ?? config.aiSlotCap;
+  const cap = input.cap ?? config.guestSlotCap;
   const free = organizerFreeWindows(input.rules, input.organizerBusy);
   const taken: Interval[] = [...input.existing];
   const result: AddResult = { added: [], skipped: [] };
@@ -132,4 +134,38 @@ export function addAiSlots(input: {
     taken.push(pick);
   }
   return result;
+}
+
+/**
+ * New times a guest's connected calendar makes possible: free for both the
+ * organizer and that guest, inside the guest's reasonable hours and the poll's
+ * rules, and not overlapping any existing option. Times other connected
+ * calendars are also free for come first, spread across days. At most `room`.
+ */
+export function calendarSuggestions(input: {
+  rules: PollRules;
+  organizerBusy: Interval[];
+  guest: { name: string; timezone: string; busy: Interval[] };
+  /** Busy times of the other guests who connected a calendar. */
+  othersBusy: Interval[][];
+  existing: SlotOption[];
+  room: number;
+  now: number;
+}): Interval[] {
+  if (input.room <= 0) return [];
+  // The guest counts as a known person in their own timezone, so their reasonable hours apply.
+  const listed = input.rules.people.some((p) => p.name.trim().toLowerCase() === input.guest.name.trim().toLowerCase());
+  const rules: PollRules = {
+    ...input.rules,
+    people: listed
+      ? input.rules.people.map((p) =>
+          p.name.trim().toLowerCase() === input.guest.name.trim().toLowerCase() ? { ...p, timezone: input.guest.timezone } : p,
+        )
+      : [...input.rules.people, { name: input.guest.name, timezone: input.guest.timezone, required: false }],
+  };
+  const free = subtract(organizerFreeWindows(rules, input.organizerBusy), input.guest.busy);
+  const pool = slotsWithin(free, rules, input.now).filter((s) => !input.existing.some((e) => overlaps(e, s)));
+  const othersCant = (slot: Interval) =>
+    input.othersBusy.filter((busy) => busy.some((b) => overlaps(b, slot))).length * config.weights.no;
+  return chooseInitialOptions(pool, rules, input.room, othersCant);
 }

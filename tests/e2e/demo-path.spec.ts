@@ -51,7 +51,7 @@ test("organizer creates, guests answer, organizer picks", async ({ page, browser
   await priya.getByLabel("When are you free?").fill("Tuesday or Wednesday afternoons, not Mondays");
   await priya.getByRole("button", { name: "Check what I meant" }).click();
   await expect(priya.getByRole("heading", { name: "What I understood" })).toBeVisible();
-  await priya.getByRole("button", { name: "Looks right" }).click();
+  await priya.getByRole("button", { name: "Looks right, add these" }).click();
   await expect(priya.getByText(/Added \d new times?/)).toBeVisible();
   await expect(priya.getByText("Added from a suggestion").first()).toBeVisible();
 
@@ -70,4 +70,55 @@ test("organizer creates, guests answer, organizer picks", async ({ page, browser
   // The guest link now shows the final time.
   await mei.reload();
   await expect(mei.getByText(/Alex picked/)).toBeVisible();
+});
+
+test("a guest's calendar answers, suggests a time, and brings them to the next meeting", async ({ page, browser }) => {
+  await page.goto(`/api/test-login?name=Alex&email=${ORGANIZER}&next=/new`);
+  await page.getByLabel("Describe the meeting").fill(
+    "A one-hour check-in with Priya and Mei this week. Afternoons are best.",
+  );
+  await page.getByRole("button", { name: "Read my description" }).click();
+  await page.getByRole("button", { name: "Create poll" }).click();
+  const shareUrl = await page.getByLabel("Share link").inputValue();
+
+  // Mei connects a calendar (the labeled sample one in test mode): her answers fill themselves in.
+  const mei = await guestPage(browser, shareUrl);
+  await mei.getByRole("button", { name: "Mei", exact: true }).click();
+  await mei.getByLabel("Email").fill("mei@example.com");
+  await mei.getByRole("button", { name: "Use a sample calendar (test mode)" }).click();
+  await expect(mei.getByRole("heading", { name: "Your calendar is answering" })).toBeVisible();
+  await expect(mei.getByText("From your calendar").first()).toBeVisible();
+
+  // It offers a new time that fits her and the organizer; adding it marks her yes.
+  await expect(mei.getByRole("heading", { name: "More times that fit your calendar" })).toBeVisible();
+  await mei.getByRole("button", { name: "Add to the poll" }).first().click();
+  await expect(mei.getByText("Added to the poll and marked yes for you")).toBeVisible();
+
+  // She asks to be remembered for this organizer's next meeting.
+  const saved = mei.waitForResponse((r) => r.url().includes("/api/guest/remember") && r.ok());
+  await mei.getByLabel(/Remember me for future meetings with Alex/).check();
+  await saved;
+
+  // The organizer meets the group again: Mei comes along and her calendar answers for her.
+  await page.getByRole("link", { name: "Open your poll's dashboard" }).click();
+  await expect(page.getByText("Mei asked to be remembered")).toBeVisible();
+  await page.getByRole("link", { name: "New meeting with this group" }).click();
+  await expect(page.getByText(/Mei comes along/)).toBeVisible();
+  await page.getByLabel("Describe the meeting").fill(
+    "A one-hour check-in with Priya and Mei this week. Afternoons are best.",
+  );
+  await page.getByRole("button", { name: "Read my description" }).click();
+  await page.getByRole("button", { name: "Create poll" }).click();
+  const againUrl = await page.getByLabel("Share link").inputValue();
+
+  // Mei opens the new poll's shared link on a fresh device: she's already in it, so she's sent a private link.
+  const meiElsewhere = await guestPage(browser, againUrl);
+  await meiElsewhere.getByLabel(/type your name/).fill("Mei");
+  await meiElsewhere.getByLabel("Email").fill("mei@example.com");
+  await meiElsewhere.getByRole("button", { name: "Send my answers" }).click();
+  await expect(meiElsewhere.getByText(/We've emailed a private link/)).toBeVisible();
+
+  await page.getByRole("link", { name: "Open your poll's dashboard" }).click();
+  await expect(page.getByText("2 of 3")).toBeVisible();
+  await expect(page.getByText("sample calendar connected")).toBeVisible();
 });

@@ -22,6 +22,16 @@ export const SAMPLE_CALENDARS: Record<string, SampleCalendar> = {
       { days: [1, 2, 3, 4, 5], start: "12:30", end: "13:30" },
     ],
   },
+  // Test mode only: what a guest "connects" when they choose the sample calendar.
+  guest: {
+    label: "Sample calendar (guest)",
+    timezone: "Asia/Hong_Kong",
+    blocks: [
+      { days: [1, 3], start: "13:00", end: "18:00" },
+      { days: [2], start: "09:00", end: "15:00" },
+      { days: [5], start: "08:00", end: "20:00" },
+    ],
+  },
 };
 
 export function expandWeekly(cal: SampleCalendar, from: number, to: number): Interval[] {

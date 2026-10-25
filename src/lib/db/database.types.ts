@@ -55,6 +55,7 @@ export type Database = {
       guests: Table<
         {
           calendar_connection_id: string | null;
+          claim_token: string | null;
           created_at: string;
           email: string;
           guest_token: string;

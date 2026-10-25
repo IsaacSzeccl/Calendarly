@@ -29,10 +29,13 @@ export async function POST(request: Request) {
 
   const result = await parseStatement({ text, timezone, guestName: guest.name, window: poll.rules.window });
   if (!result.ok) return Response.json({ error: REPHRASE }, { status: 422 });
-  if (result.data.ranges.length === 0) {
+  const { ranges, preferencesSummary, preferences } = result.data;
+  // No times inside the poll can still be a useful note ("I'd rather meet the week after"),
+  // so only text with nothing in it at all is sent back to be rephrased.
+  if (ranges.length === 0 && !preferencesSummary && preferences.length === 0) {
     return Response.json({ error: REPHRASE }, { status: 422 });
   }
 
   const statementId = await createStatement({ pollId: poll.id, guestId: guest.id, text, interpretation: result.data });
-  return Response.json({ statementId, interpretation: result.data });
+  return Response.json({ statementId, interpretation: result.data, pollDates: poll.rules.window });
 }

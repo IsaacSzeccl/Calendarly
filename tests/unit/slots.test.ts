@@ -4,6 +4,7 @@ import { config } from "@/lib/config";
 import {
   addAiSlots,
   buildCandidatePool,
+  calendarSuggestions,
   chooseInitialOptions,
   rulePenalties,
   ruleScore,
@@ -59,9 +60,9 @@ const tomJamie = rules({
 describe("config is pinned", () => {
   it("keeps the agreed numbers", () => {
     expect(config.slotStepMinutes).toBe(15);
-    expect(config.aiSlotCap).toBe(3);
+    expect(config.guestSlotCap).toBe(3);
     expect(config.reasonableHours).toEqual({ start: "08:00", end: "21:00" });
-    expect(config.weights).toMatchObject({ no: 10, requiredNo: 1000, preferNot: 3, unmarked: 1, softConstraint: 2 });
+    expect(config.weights).toMatchObject({ no: 10, requiredNo: 1000, preferNot: 3, unmarked: 5, requiredUnmarked: 15, softConstraint: 2 });
   });
 });
 
@@ -208,6 +209,65 @@ describe("addAiSlots", () => {
       ranges: [{ start: at("2026-10-28T21:30"), end: at("2026-10-28T23:30") }],
     });
     expect(res.added).toEqual([]);
+  });
+});
+
+describe("calendarSuggestions (a guest connected their calendar)", () => {
+  const existing: SlotOption[] = [
+    { id: "a", source: "organizer_free", start: at("2026-10-27T13:00"), end: at("2026-10-27T14:00") },
+  ];
+  // The guest is busy all week except Wednesday and Thursday afternoons.
+  const guestBusy = [
+    { start: at("2026-10-26T00:00"), end: at("2026-10-28T12:00") },
+    { start: at("2026-10-28T17:00"), end: at("2026-10-29T12:00") },
+    { start: at("2026-10-29T17:00"), end: at("2026-10-31T00:00") },
+  ];
+  const base = {
+    rules: rules(),
+    organizerBusy: [],
+    guest: { name: "Priya", timezone: NY, busy: guestBusy },
+    othersBusy: [],
+    existing,
+    room: 3,
+    now: NOW,
+  };
+
+  it("only offers times both the guest and the organizer are free, spread across days", () => {
+    const s = calendarSuggestions(base);
+    expect(s.length).toBeGreaterThan(0);
+    for (const slot of s) {
+      expect(guestBusy.some((b) => b.start < slot.end && slot.start < b.end)).toBe(false);
+      expect(existing.some((e) => e.start < slot.end && slot.start < e.end)).toBe(false);
+    }
+    expect(new Set(s.map((x) => DateTime.fromMillis(x.start, { zone: NY }).weekday))).toEqual(new Set([3, 4]));
+  });
+
+  it("skips times the organizer is busy", () => {
+    const s = calendarSuggestions({
+      ...base,
+      organizerBusy: [{ start: at("2026-10-28T09:00"), end: at("2026-10-28T17:00") }],
+    });
+    expect(s.every((x) => DateTime.fromMillis(x.start, { zone: NY }).weekday === 4)).toBe(true);
+  });
+
+  it("prefers times other connected calendars are free for", () => {
+    // Someone else is busy all of Wednesday, so Thursday comes first.
+    const s = calendarSuggestions({
+      ...base,
+      room: 1,
+      othersBusy: [[{ start: at("2026-10-28T00:00"), end: at("2026-10-29T00:00") }]],
+    });
+    expect(DateTime.fromMillis(s[0].start, { zone: NY }).weekday).toBe(4);
+  });
+
+  it("respects the guest's own reasonable hours in their timezone", () => {
+    // 13:00–17:00 in New York is 17:00–21:00 in London, but in Tokyo it's the middle of the night.
+    const s = calendarSuggestions({ ...base, guest: { ...base.guest, timezone: "Asia/Tokyo" } });
+    expect(s).toEqual([]);
+  });
+
+  it("offers nothing once the poll has no room for more times", () => {
+    expect(calendarSuggestions({ ...base, room: 0 })).toEqual([]);
   });
 });
 

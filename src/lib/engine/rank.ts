@@ -33,6 +33,8 @@ export type Assessment = {
   unknown: string[];
   /** Answered the poll but left this time blank. */
   unmarked: string[];
+  /** The part of the score that comes only from those blanks. */
+  blankPoints: number;
   requiredMissing: string[];
 };
 
@@ -100,7 +102,11 @@ export function scoreSlot(option: SlotOption, ctx: RankContext): Omit<Assessment
     } else {
       unknown.push(r.name);
       unmarked.push(r.name);
-      penalties.push({ reason: `${r.name} left this time blank`, points: config.weights.unmarked, person: r.name });
+      penalties.push({
+        reason: required ? `${r.name} must attend but left this time blank` : `${r.name} left this time blank`,
+        points: required ? config.weights.requiredUnmarked : config.weights.unmarked,
+        person: r.name,
+      });
     }
     if (r.preferences.length) penalties.push(...softPenalties(option, r.preferences, rules));
   }
@@ -121,17 +127,33 @@ export function scoreSlot(option: SlotOption, ctx: RankContext): Omit<Assessment
 
   penalties.push(...softPenalties(option, ctx.rules.constraints, rules));
   const score = penalties.reduce((sum, p) => sum + p.points, 0);
-  return { option, statuses, penalties, score, canCome, preferNot, cannotCome, unknown, unmarked, requiredMissing };
+  const blankPoints = unmarked.reduce(
+    (sum, name) => sum + (isRequired(name, rules) ? config.weights.requiredUnmarked : config.weights.unmarked),
+    0,
+  );
+  return {
+    option,
+    statuses,
+    penalties,
+    score,
+    canCome,
+    preferNot,
+    cannotCome,
+    unknown,
+    unmarked,
+    blankPoints,
+    requiredMissing,
+  };
 }
 
 /**
  * Turn a score into the fuzzy label people see. Rules override bands:
  * a required person's "no" is always Not recommended, Recommended or
- * Works well need no "no" from anyone, and Recommended also needs no blanks
- * from people who answered.
+ * Works well need no "no" from anyone, Recommended also needs no blanks
+ * from people who answered, and blanks alone never make a time Not recommended.
  */
 export function labelFor(
-  a: Pick<Assessment, "score" | "cannotCome" | "requiredMissing"> & { unmarked?: string[] },
+  a: Pick<Assessment, "score" | "cannotCome" | "requiredMissing"> & { unmarked?: string[]; blankPoints?: number },
   onlyIfNecessary: boolean,
 ): Label {
   if (a.requiredMissing.length > 0) return "Not recommended";
@@ -142,7 +164,9 @@ export function labelFor(
   const blanks = (a.unmarked?.length ?? 0) > 0;
   if (!anyNo && !blanks && a.score <= bands.recommended) return "Recommended";
   if (!anyNo && a.score <= bands.worksWell) return "Works well";
+  // Blanks are unknowns, not refusals: on their own they never make a time "Not recommended".
   if (a.score <= config.labelBands.tradeOffs) return "Works with trade-offs";
+  if (!anyNo && a.score - (a.blankPoints ?? 0) <= config.labelBands.tradeOffs) return "Works with trade-offs";
   return "Not recommended";
 }
 

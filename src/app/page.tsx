@@ -15,7 +15,7 @@ async function Problem({ searchParams }: { searchParams: Promise<{ signin?: stri
 
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
-    <div className="space-y-10">
+    <div className="max-w-2xl space-y-10">
       <Suspense fallback={null}>
         <Problem searchParams={searchParams as Promise<{ signin?: string; calendar?: string }>} />
       </Suspense>
