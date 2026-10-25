@@ -64,6 +64,7 @@ export type Database = {
           preferences: Json;
           preferences_summary: string | null;
           remember: boolean;
+          is_sample: boolean;
           timezone: string;
           updated_at: string;
         },

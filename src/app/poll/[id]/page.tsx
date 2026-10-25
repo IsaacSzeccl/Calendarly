@@ -50,7 +50,7 @@ function AiNote({ explanation, basis, pending }: { explanation: Explanation | nu
 
 function Ranking({ d, explanation, canPick }: { d: Dashboard; explanation: Explanation; canPick: boolean }) {
   const zone = d.poll.rules.organizerTimezone;
-  const lines = new Map(explanation.perOption.map((p) => [p.optionId, p.text]));
+  const lines = new Map(explanation.perOption.map((p) => [p.option, p.text]));
   return (
     <ol className="border-t border-rule">
       {d.ranked.map((a) => {
@@ -72,7 +72,7 @@ function Ranking({ d, explanation, canPick }: { d: Dashboard; explanation: Expla
                 )}
                 {picked && <span className="rounded bg-ribbon px-2 py-0.5 text-sm font-semibold text-ribbon-ink">Picked</span>}
               </div>
-              <p>{lines.get(a.option.id)}</p>
+              <p>{lines.get(a.number)}</p>
               <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-pencil">
                 <span className="inline-flex items-center gap-1 text-yes"><StatusIcon status="yes" />{a.canCome.length} yes</span>
                 <span className="inline-flex items-center gap-1 text-maybe"><StatusIcon status="prefer_not" />{a.preferNot.length} prefer not</span>
@@ -123,7 +123,10 @@ function VotesTable({ d }: { d: Dashboard }) {
           <tbody>
             {d.respondents.map((r) => (
               <tr key={r.id} className="border-b border-rule">
-                <th scope="row" className="py-2 pr-3 font-medium">{r.name}</th>
+                <th scope="row" className="py-2 pr-3 font-medium">
+                  {r.name}
+                  {d.guests.find((g) => g.id === r.id)?.isSample && <span className="ml-1 text-sm font-normal text-pencil">(sample)</span>}
+                </th>
                 {byTime.map((a) => (
                   <td key={a.option.id} className="px-2 py-2 text-center">
                     <StatusMark status={a.statuses[r.id] ?? "unknown"} compact />
@@ -157,6 +160,7 @@ function People({ d }: { d: Dashboard }) {
                 {required.has(g.name.toLowerCase()) && <span className="ml-2 text-sm font-normal text-ribbon">must attend</span>}
               </span>
               <span className="text-sm text-pencil">
+                {g.isSample && "sample guest with made-up answers, "}
                 {d.needsReconnect.includes(g.name)
                   ? "calendar needs reconnecting"
                   : g.calendarConnectionId
@@ -258,7 +262,8 @@ async function DashboardBody({ params }: { params: Promise<{ id: string }> }) {
             <AiNote explanation={null} basis={d.basis} pending />
             <section className="space-y-3">
               <h2 className="text-2xl">Times, best first</h2>
-              <Ranking d={d} explanation={fallbackExplanation(d.facts)} canPick={canPick} />
+              {/* Picking waits for the note, so a click can't land on this placeholder list. */}
+              <Ranking d={d} explanation={fallbackExplanation(d.facts)} canPick={false} />
             </section>
           </>
         }

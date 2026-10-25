@@ -36,6 +36,8 @@ export type Guest = {
   preferences: Constraint[];
   calendarConnectionId: string | null;
   remember: boolean;
+  /** A seeded demo guest with made-up answers. */
+  isSample: boolean;
 };
 
 export type Vote = { optionId: string; guestId: string; choice: Choice };
@@ -88,6 +90,7 @@ function toGuest(r: Row<"guests">): Guest {
     preferences: (r.preferences ?? []) as unknown as Constraint[],
     calendarConnectionId: r.calendar_connection_id,
     remember: r.remember,
+    isSample: r.is_sample,
   };
 }
 

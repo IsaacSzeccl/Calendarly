@@ -66,6 +66,6 @@ export type ParsedStatement = z.infer<typeof parsedStatementSchema>;
 export const explanationSchema = z.object({
   summary: z.string().min(1),
   conditional: z.array(z.string()),
-  perOption: z.array(z.object({ optionId: z.string(), text: z.string().min(1) })),
+  perOption: z.array(z.object({ option: z.number().int().min(1), text: z.string().min(1) })),
 });
 export type Explanation = z.infer<typeof explanationSchema>;

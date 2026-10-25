@@ -58,6 +58,6 @@ export function fallbackExplanation(f: ExplainFacts): Explanation {
   return {
     summary,
     conditional: f.advice,
-    perOption: f.options.map((o) => ({ optionId: o.id, text: optionLine(o) })),
+    perOption: f.options.map((o) => ({ option: o.number, text: optionLine(o) })),
   };
 }

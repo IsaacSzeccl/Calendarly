@@ -121,6 +121,34 @@ export const RECORDINGS: Recording[] = [
     },
   },
   {
+    job: "parsePoll",
+    match: "one-hour check-in with Priya and Mei",
+    answer: {
+      title: "Check-in",
+      people: [
+        { name: "Priya", timezone: null, hours: null, required: false, notes: null },
+        { name: "Mei", timezone: null, hours: null, required: false, notes: null },
+      ],
+      expectedCount: 3,
+      window: { startDate: "@D+1", endDate: "@D+5" },
+      durationMinutes: 60,
+      workingHours: null,
+      constraints: [
+        {
+          appliesTo: "everyone",
+          type: "prefer",
+          strength: "soft",
+          timeOfDay: "afternoon",
+          weight: 1,
+          description: "Afternoons are best",
+        },
+      ],
+      reasonableHours: null,
+      onlyIfNecessary: false,
+      notUnderstood: [],
+    },
+  },
+  {
     job: "parseStatement",
     match: "Tuesday or Wednesday afternoons, not Mondays",
     answer: {

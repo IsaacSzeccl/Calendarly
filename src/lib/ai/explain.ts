@@ -18,7 +18,7 @@ You are given facts that code has already worked out. Use only those facts:
 Write:
 - summary: 2 to 4 sentences. Say which option is best and why, and which is weakest and why. Name the trade-off with people's names ("Option 1 has everyone but Leo; option 3 has Leo but not Priya"). If noClearFit is true, say plainly that nothing is a clear fit and that, since they only want to meet if necessary, waiting or widening the dates may be better. Do not include the "based on" line; it is shown separately.
 - conditional: rewrite each sentence in "advice" in your own words, keeping the same option numbers and names. Empty if advice is empty.
-- perOption: one short sentence for every option id given, about who can and can't come and any preference it breaks.
+- perOption: one short sentence for every option, keyed by its number, about who can and can't come and any preference it breaks.
 
 Reply with only a JSON object matching this JSON Schema:
 ${JSON.stringify(z.toJSONSchema(explanationSchema))}`;
@@ -29,11 +29,10 @@ export function factsHash(facts: ExplainFacts): string {
 
 /** Does the note stick to the facts? Every option covered, advice kept, numbers real. */
 export function faithful(e: Explanation, facts: ExplainFacts): boolean {
-  const ids = new Set(facts.options.map((o) => o.id));
-  const covered = new Set(e.perOption.map((p) => p.optionId));
-  if (covered.size !== ids.size || [...covered].some((id) => !ids.has(id))) return false;
-  if (facts.advice.length > 0 && e.conditional.length === 0) return false;
   const numbers = new Set(facts.options.map((o) => String(o.number)));
+  const covered = new Set(e.perOption.map((p) => String(p.option)));
+  if (covered.size !== numbers.size || [...covered].some((n) => !numbers.has(n))) return false;
+  if (facts.advice.length > 0 && e.conditional.length === 0) return false;
   const mentioned = [e.summary, ...e.conditional].join(" ").match(/option (\d+)/gi) ?? [];
   if (mentioned.some((m) => !numbers.has(m.replace(/\D/g, "")))) return false;
   return !/\d+\s?%|percent|score/i.test([e.summary, ...e.conditional, ...e.perOption.map((p) => p.text)].join(" "));
@@ -57,7 +56,8 @@ export async function explain(
   const result = await complete({
     job: "explain",
     system: SYSTEM,
-    user: JSON.stringify(facts),
+    // The model sees option numbers, never database ids, so it has nothing long to copy wrongly.
+    user: JSON.stringify({ ...facts, options: facts.options.map((o) => ({ ...o, id: undefined })) }),
     schema: explanationSchema,
     input: { hash, facts },
   });

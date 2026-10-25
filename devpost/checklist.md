@@ -59,7 +59,7 @@ Build mode: fast. The learner asked for an unattended build ("continue building 
   Learner check: Sign in with your Google account, connect your calendar, create a poll, and check that the options avoid your busy times; pick one and see it on your calendar.
   Commit: `Google sign-in, calendar connection and real free/busy`
 
-- [ ] **6. Demo-ready: six demo people, the warm-planner design, and an automated demo-path test**
+- [x] **6. Demo-ready: six demo people, the warm-planner design, and an automated demo-path test**
   Becomes usable: A seeded demo (organizer + 5 guests, sample calendars labeled honestly) that produces the "no perfect slot" case; the full warm-planner design on every screen (light and dark, icons with every color); the Playwright test that runs the demo path; CI on every push.
   Why now: Polish and the demo scenario only make sense once the whole journey works; the e2e test locks it in before deployment.
   PRD ref: `prd.md > Demo and Success Criteria`, `prd.md > Look and Feel`
@@ -131,3 +131,7 @@ Activity mode: not started
 - Live calendar checks are pending the learner: Google rejects `http://localhost:3000/api/calendar/callback` with `redirect_uri_mismatch`, so that address (and the production one later) must be added to the OAuth client's authorized redirect URIs. Supabase's Google sign-in reaches Google's login page correctly; the agent did not sign in with the learner's Google account.
 - Visitors who aren't signed in can still try the preview on a labeled sample calendar; creating a poll needs sign-in and a connected calendar — lets someone see the idea before connecting anything, without faking real availability.
 - Proposing new slots from a connected guest's calendar (not only from their typed statement) is not built — the statement path covers the demo's "adds slots" beat; raised with the learner at the end.
+- The `explain` job refers to options by number instead of database ids — on the seeded demo the model garbled one id, so the faithfulness check rightly discarded the whole note; with numbers the live note passes.
+- Seeded demo guests are marked `is_sample` (migration `20261025010000_sample_guests.sql`) and labeled "sample guest with made-up answers" on the dashboard — the spec required honest labels; their answers are seeded directly rather than computed from per-guest sample calendars.
+- While the AI note loads, the placeholder ranking has no "Pick this time" buttons — the end-to-end test showed a click there could be lost when the finished ranking replaces it.
+- The end-to-end test runs on port 3210 against a production build with the recorded model, using the real Supabase project and deleting its test polls afterwards; the CI end-to-end job runs only once the Supabase secrets are added to GitHub.

@@ -64,7 +64,7 @@ describe(`explain golden case (${live ? "LIVE model" : "fallback note"})`, () =>
       expect(note).toMatch(/option 1/i);
       expect(note).toMatch(/option 3/i);
       expect(note).toMatch(/Leo/);
-      expect(explanation.perOption.map((p) => p.optionId).sort()).toEqual(["o1", "o2", "o3"]);
+      expect(explanation.perOption.map((p) => p.option).sort()).toEqual([1, 2, 3]);
     },
     live ? 90_000 : 5_000,
   );
