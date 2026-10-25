@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { DM_Sans, Fraunces } from "next/font/google";
 import Link from "next/link";
+import { Suspense } from "react";
+import { AccountMenu } from "@/components/AccountMenu";
 import "./globals.css";
 
 const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"] });
@@ -20,6 +22,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/" className="font-serif text-xl font-semibold tracking-tight">
               Calendarly
             </Link>
+            <Suspense fallback={null}>
+              <AccountMenu />
+            </Suspense>
           </div>
         </header>
         <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:px-6 sm:py-12">{children}</main>

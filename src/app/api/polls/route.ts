@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { getOrganizer } from "@/lib/auth/organizer";
+import { CalendarUnavailableError, inZone } from "@/lib/calendar/provider";
 import { createPoll } from "@/lib/db/polls";
 import { previewOptions } from "@/lib/polls/preview";
 import { draftSchema } from "@/lib/polls/schema";
@@ -18,14 +19,22 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return Response.json({ error: "Some poll details are missing or invalid." }, { status: 400 });
   }
+  if (!organizer.calendar) {
+    return Response.json({ error: "Connect your Google Calendar first, so times come from your free time." }, { status: 409 });
+  }
   const { draft, closeAt } = parsed.data;
   const rules = { ...draft.rules, organizerName: organizer.name };
-  const calendar =
-    organizer.calendar.kind === "sample"
-      ? { ...organizer.calendar, timezone: rules.organizerTimezone }
-      : organizer.calendar;
+  const calendar = inZone(organizer.calendar, rules.organizerTimezone);
 
-  const { options } = await previewOptions(rules, calendar);
+  let options;
+  try {
+    ({ options } = await previewOptions(rules, calendar));
+  } catch (e) {
+    if (e instanceof CalendarUnavailableError) {
+      return Response.json({ error: "Your Google Calendar needs reconnecting. Connect it again, then retry." }, { status: 409 });
+    }
+    throw e;
+  }
   if (options.length === 0) {
     return Response.json(
       { error: "No times fit yet. Widen the dates or hours, then try again." },

@@ -30,3 +30,8 @@ export class CalendarUnavailableError extends Error {
     super(message);
   }
 }
+
+/** Sample calendars follow the poll's timezone; real calendars need nothing extra. */
+export function inZone(account: CalendarAccount, timezone: string): CalendarAccount {
+  return account.kind === "sample" ? { ...account, timezone } : account;
+}

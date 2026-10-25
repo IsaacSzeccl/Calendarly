@@ -5,12 +5,22 @@ import { CreatePoll } from "./CreatePoll";
 
 export const metadata: Metadata = { title: "New poll · Calendarly" };
 
-async function CreatePollForOrganizer() {
-  const organizer = await getOrganizer();
-  return <CreatePoll signedIn={organizer !== null} testMode={testModeOn()} />;
+async function CreatePollForOrganizer({ searchParams }: { searchParams: Promise<{ calendar?: string }> }) {
+  const [organizer, { calendar }] = await Promise.all([getOrganizer(), searchParams]);
+  return (
+    <CreatePoll
+      account={{
+        signedIn: organizer !== null,
+        calendar: organizer?.calendar?.kind ?? null,
+        needsReconnect: organizer?.calendarNeedsReconnect ?? false,
+        testMode: testModeOn(),
+        calendarResult: calendar ?? null,
+      }}
+    />
+  );
 }
 
-export default function NewPollPage() {
+export default function NewPollPage({ searchParams }: PageProps<"/new">) {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
@@ -21,7 +31,7 @@ export default function NewPollPage() {
         </p>
       </div>
       <Suspense fallback={<p className="text-pencil">Loading…</p>}>
-        <CreatePollForOrganizer />
+        <CreatePollForOrganizer searchParams={searchParams as Promise<{ calendar?: string }>} />
       </Suspense>
     </div>
   );

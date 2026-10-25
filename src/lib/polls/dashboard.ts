@@ -15,6 +15,7 @@ import {
 } from "@/lib/engine/rank";
 import type { Choice, Respondent, SlotOption } from "@/lib/engine/types";
 import { slotLabel } from "@/lib/format";
+import { guestBusy } from "./guestCalendar";
 
 export type Dashboard = {
   poll: Poll;
@@ -28,6 +29,8 @@ export type Dashboard = {
   completion: Completion;
   basis: string;
   waiting: string[];
+  /** Guests whose connected calendar couldn't be read (expired or revoked). */
+  needsReconnect: string[];
   noClearFit: boolean;
   failedEmails: number;
   facts: ExplainFacts;
@@ -42,8 +45,9 @@ export async function loadDashboard(poll: Poll): Promise<Dashboard> {
     db().from("email_log").select("id", { count: "exact", head: true }).eq("poll_id", poll.id).eq("result", "failed"),
   ]);
   const statementGuests = new Set(must(statements, "load statements").map((s) => s.guest_id));
+  const calendars = await Promise.all(guests.map((g) => guestBusy(g.calendarConnectionId, options)));
 
-  const respondents: Respondent[] = guests.map((g) => ({
+  const respondents: Respondent[] = guests.map((g, i) => ({
     id: g.id,
     name: g.name,
     timezone: g.timezone,
@@ -51,7 +55,7 @@ export async function loadDashboard(poll: Poll): Promise<Dashboard> {
     votes: Object.fromEntries(
       votes.filter((v) => v.guestId === g.id).map((v) => [v.optionId, v.choice as Choice]),
     ),
-    busy: null,
+    busy: calendars[i].state === "connected" ? calendars[i].busy : null,
     preferences: g.preferences.map((p) => ({ ...p, appliesTo: g.name })),
     hasStatement: statementGuests.has(g.id),
   }));
@@ -107,6 +111,7 @@ export async function loadDashboard(poll: Poll): Promise<Dashboard> {
     completion: isComplete(respondents.length, poll.expectedCount),
     basis,
     waiting,
+    needsReconnect: guests.filter((_, i) => calendars[i].state === "needs_reconnect").map((g) => g.name),
     noClearFit: clearFitMissing,
     failedEmails: failed.count ?? 0,
     facts,

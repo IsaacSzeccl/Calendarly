@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { parsePoll, type PollDraft } from "@/lib/ai/parsePoll";
+import { getOrganizer } from "@/lib/auth/organizer";
+import { CalendarUnavailableError, inZone } from "@/lib/calendar/provider";
 import { isValidZone } from "@/lib/engine/time";
 import { previewOptions } from "@/lib/polls/preview";
 import { draftSchema } from "@/lib/polls/schema";
@@ -34,7 +36,19 @@ export async function POST(request: Request) {
     draft = parsed.data.draft;
   }
 
-  const organizer = { kind: "sample" as const, key: "organizer", timezone: draft.rules.organizerTimezone };
-  const { options, poolSize } = await previewOptions(draft.rules, organizer);
-  return Response.json({ draft, options, poolSize, calendar: "sample" });
+  // Signed-in organizers see their real free time; visitors trying it out see a sample calendar.
+  const organizer = await getOrganizer();
+  const account = inZone(organizer?.calendar ?? { kind: "sample", key: "organizer" }, draft.rules.organizerTimezone);
+  try {
+    const { options, poolSize } = await previewOptions(draft.rules, account);
+    return Response.json({ draft, options, poolSize, calendar: account.kind });
+  } catch (e) {
+    if (e instanceof CalendarUnavailableError) {
+      return Response.json(
+        { error: "Your Google Calendar needs reconnecting. Connect it again, then retry." },
+        { status: 409 },
+      );
+    }
+    throw e;
+  }
 }

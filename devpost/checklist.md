@@ -49,7 +49,7 @@ Build mode: fast. The learner asked for an unattended build ("continue building 
   Learner check: As a guest, type when you're free in your own words, check the panel, press "Looks right", and see the new times appear for the next guest.
   Commit: `Guest plain-language availability adds confirmed slots`
 
-- [ ] **5. Real Google: the organizer signs in and connects Calendar; a guest can connect for pre-filled marks**
+- [x] **5. Real Google: the organizer signs in and connects Calendar; a guest can connect for pre-filled marks**
   Becomes usable: Sign in with Google (Supabase), a separate "Connect Google Calendar" step, real free/busy for the organizer's options and AI-added slots, the picked slot created on the organizer's real calendar, and an optional guest connection that pre-fills yes/no marks the guest can change. Disconnect revokes the token. Expired tokens are flagged with "reconnect".
   Why now: It depends on the learner's Google Cloud and Supabase provider setup, which can't be completed unattended; everything before it runs on the sample calendar behind the same interface, so swapping in Google changes no other code.
   PRD ref: `prd.md > The Core Journey` (steps 1, 4, 9), `prd.md > Privacy`, `prd.md > States and Boundaries` (calendar connection fails, unverified app)
@@ -127,3 +127,7 @@ Activity mode: not started
 - Guests add a time through the plain-language box rather than a separate "add a time" picker — the box already covers it ("Thursday from 3pm to 5pm") and keeps one path through the confirm step and the cap.
 - Times a guest suggests start as a "yes" for that guest, and asking for a suggestion first saves their answers — a suggestion needs a known guest, and the suggester obviously can make it.
 - Statement recordings use "@W+n" (poll start plus n days) — the model can read "next week" differently on a Sunday, so tests check what must hold (mornings, inside the poll's dates, timezone) and the guest's confirm step settles which week.
+- Google's `freeBusy.query` accepts the narrow `calendar.freebusy` scope (checked against Google's reference), so guests grant free/busy only and organizers free/busy plus `calendar.events`; no fallback to `calendar.readonly` is needed.
+- Live calendar checks are pending the learner: Google rejects `http://localhost:3000/api/calendar/callback` with `redirect_uri_mismatch`, so that address (and the production one later) must be added to the OAuth client's authorized redirect URIs. Supabase's Google sign-in reaches Google's login page correctly; the agent did not sign in with the learner's Google account.
+- Visitors who aren't signed in can still try the preview on a labeled sample calendar; creating a poll needs sign-in and a connected calendar — lets someone see the idea before connecting anything, without faking real availability.
+- Proposing new slots from a connected guest's calendar (not only from their typed statement) is not built — the statement path covers the demo's "adds slots" beat; raised with the learner at the end.

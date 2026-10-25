@@ -21,6 +21,15 @@ export type GuestFormProps = {
   options: { id: string; start: number; end: number; source: OptionSource }[];
   finalOption: { start: number; end: number } | null;
   me: { name: string; email: string; timezone: string; votes: Record<string, Choice> } | null;
+  calendar: { state: "connected" | "needs_reconnect" | "none"; marks: Record<string, "yes" | "no"> };
+  calendarResult: string | null;
+};
+
+const CALENDAR_RESULT: Record<string, string> = {
+  connected: "Your calendar is connected. Your answers are pre-filled from when you're busy; change any of them.",
+  declined: "Calendar access wasn't given. You can still answer by hand.",
+  failed: "Connecting your calendar didn't work. You can try again or answer by hand.",
+  "save-first": "Add your name and email first, then connect your calendar.",
 };
 
 const noop = () => () => {};
@@ -34,7 +43,10 @@ export function GuestForm(props: GuestFormProps) {
   const zone = useBrowserZone(props.me?.timezone ?? props.organizerTimezone);
   const [name, setName] = useState(props.me?.name ?? "");
   const [email, setEmail] = useState(props.me?.email ?? "");
-  const [votes, setVotes] = useState<Record<string, Choice>>(props.me?.votes ?? {});
+  // Calendar marks fill the gaps; anything the guest chose themselves wins.
+  const [votes, setVotes] = useState<Record<string, Choice>>({ ...props.calendar.marks, ...(props.me?.votes ?? {}) });
+  const [touched, setTouched] = useState<Set<string>>(() => new Set(Object.keys(props.me?.votes ?? {})));
+  const [disconnecting, setDisconnecting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -163,11 +175,15 @@ export function GuestForm(props: GuestFormProps) {
             ) : (
               <div className="flex flex-wrap items-center gap-2">
                 {slot.source === "ai_added" && <span className="text-sm text-pencil">Added from a suggestion</span>}
+                {props.calendar.marks[slot.id!] && !touched.has(slot.id!) && (
+                  <span className="text-sm text-pencil">From your calendar</span>
+                )}
                 <ChoicePicker
                   label={`Your answer for ${slotLabel(slot.start, slot.end, zone)}`}
                   value={votes[slot.id!]}
                   onChange={(c) => {
                     setVotes((v) => ({ ...v, [slot.id!]: c }));
+                    setTouched((t) => new Set(t).add(slot.id!));
                     setSaved(null);
                   }}
                 />
@@ -176,6 +192,60 @@ export function GuestForm(props: GuestFormProps) {
           }
         />
       </section>
+
+      {!readOnly && (
+        <section aria-labelledby="calendar" className="space-y-3">
+          <h2 id="calendar" className="text-2xl">
+            Or let your calendar answer
+          </h2>
+          {props.calendarResult && CALENDAR_RESULT[props.calendarResult] && (
+            <Notice tone={props.calendarResult === "connected" ? "info" : "error"}>
+              {CALENDAR_RESULT[props.calendarResult]}
+            </Notice>
+          )}
+          {props.calendar.state === "connected" ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <span>Your Google Calendar is connected. Only busy or free is read, never your events.</span>
+              <Button
+                variant="plain"
+                type="button"
+                disabled={disconnecting}
+                onClick={async () => {
+                  setDisconnecting(true);
+                  await fetch("/api/calendar/disconnect", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ for: "guest", token: props.token }),
+                  });
+                  router.replace(`/p/${props.token}`);
+                  router.refresh();
+                }}
+              >
+                {disconnecting ? "Disconnecting…" : "Disconnect"}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-pencil">
+                {props.calendar.state === "needs_reconnect"
+                  ? "Your calendar connection expired. Reconnect to keep your marks up to date."
+                  : "Optional. Connect Google Calendar and your answers are pre-filled from when you're busy. Only busy or free is read, never your events."}
+              </p>
+              <Button
+                variant="quiet"
+                type="button"
+                onClick={async () => {
+                  // A full navigation: this API route redirects on to Google's consent screen.
+                  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+                  if (await save()) window.location.assign(`/api/calendar/connect?for=guest&token=${props.token}`);
+                }}
+              >
+                {props.calendar.state === "needs_reconnect" ? "Reconnect Google Calendar" : "Connect Google Calendar"}
+              </Button>
+            </div>
+          )}
+        </section>
+      )}
 
       {!readOnly && (
         <StatementBox

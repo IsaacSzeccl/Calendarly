@@ -157,7 +157,12 @@ function People({ d }: { d: Dashboard }) {
                 {required.has(g.name.toLowerCase()) && <span className="ml-2 text-sm font-normal text-ribbon">must attend</span>}
               </span>
               <span className="text-sm text-pencil">
-                {g.calendarConnectionId ? "calendar connected" : "answered by hand"}, {zoneShort(g.timezone)}
+                {d.needsReconnect.includes(g.name)
+                  ? "calendar needs reconnecting"
+                  : g.calendarConnectionId
+                    ? "calendar connected"
+                    : "answered by hand"}
+                , {zoneShort(g.timezone)}
               </span>
             </div>
             {g.preferencesSummary && <p className="text-sm text-pencil">{g.preferencesSummary}</p>}
@@ -233,6 +238,12 @@ async function DashboardBody({ params }: { params: Promise<{ id: string }> }) {
         <Notice tone="error">
           {d.failedEmails === 1 ? "1 email wasn't sent." : `${d.failedEmails} emails weren't sent.`} Everything else
           still works.
+        </Notice>
+      )}
+      {d.needsReconnect.length > 0 && (
+        <Notice>
+          {d.needsReconnect.join(", ")} connected a calendar that can't be read any more, so the ranking uses
+          their votes only. They can reconnect from the poll link.
         </Notice>
       )}
       {d.respondents.length === 0 && (

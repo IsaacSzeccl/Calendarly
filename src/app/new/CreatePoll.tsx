@@ -18,7 +18,79 @@ function describeRule(c: Constraint): string {
 
 type Created = { shareUrl: string; dashboardUrl: string };
 
-export function CreatePoll({ signedIn, testMode }: { signedIn: boolean; testMode: boolean }) {
+export type Account = {
+  signedIn: boolean;
+  calendar: "google" | "sample" | null;
+  needsReconnect: boolean;
+  testMode: boolean;
+  /** From ?calendar=… after the Google consent screen. */
+  calendarResult: string | null;
+};
+
+const CALENDAR_RESULT: Record<string, string> = {
+  connected: "Your Google Calendar is connected. Times now come from your real free time.",
+  declined: "Calendar access wasn't given, so I can't see your free time yet.",
+  failed: "Connecting your calendar didn't work. Try again.",
+  "sign-in-first": "Sign in first, then connect your calendar.",
+  expired: "That took too long. Try connecting again.",
+};
+
+function AccountStep({ account }: { account: Account }) {
+  if (!account.signedIn) {
+    return (
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-rule p-4">
+        <span className="flex-1">Sign in to save the poll and use your own calendar. You can try it first without signing in.</span>
+        <a href="/auth/sign-in?next=/new" className="inline-flex min-h-11 items-center rounded-md bg-ribbon px-4 font-semibold text-ribbon-ink hover:brightness-110">
+          Sign in with Google
+        </a>
+        {account.testMode && (
+          <a className="text-sm underline" href="/api/test-login?next=/new">
+            Test sign-in
+          </a>
+        )}
+      </div>
+    );
+  }
+  if (account.calendar === null) {
+    return (
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-rule p-4">
+        <span className="flex-1">
+          {account.needsReconnect
+            ? "Your Google Calendar connection expired. Reconnect it so I can see when you're free."
+            : "Connect your Google Calendar so I can offer times when you're free. I only ever see busy or free, never what's in your events."}
+        </span>
+        <a href="/api/calendar/connect?for=organizer" className="inline-flex min-h-11 items-center rounded-md bg-ribbon px-4 font-semibold text-ribbon-ink hover:brightness-110">
+          {account.needsReconnect ? "Reconnect Google Calendar" : "Connect Google Calendar"}
+        </a>
+      </div>
+    );
+  }
+  if (account.calendar === "google") {
+    return (
+      <p className="text-sm text-pencil">
+        Your Google Calendar is connected (busy or free only).{" "}
+        <button
+          type="button"
+          className="underline underline-offset-4 hover:text-ink"
+          onClick={async () => {
+            await fetch("/api/calendar/disconnect", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ for: "organizer" }),
+            });
+            location.reload();
+          }}
+        >
+          Disconnect
+        </button>
+      </p>
+    );
+  }
+  return null;
+}
+
+export function CreatePoll({ account }: { account: Account }) {
+  const signedIn = account.signedIn && account.calendar !== null;
   const [text, setText] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [draft, setDraft] = useState<PollDraft | null>(null);
@@ -97,6 +169,12 @@ export function CreatePoll({ signedIn, testMode }: { signedIn: boolean; testMode
 
   return (
     <div className="space-y-10">
+      {account.calendarResult && CALENDAR_RESULT[account.calendarResult] && (
+        <Notice tone={account.calendarResult === "connected" ? "info" : "error"}>
+          {CALENDAR_RESULT[account.calendarResult]}
+        </Notice>
+      )}
+      <AccountStep account={account} />
       <section className="space-y-3">
         <Field label="Describe the meeting" hint="Who's coming, roughly when, how long, and anything people can't do.">
           <textarea
@@ -305,7 +383,9 @@ export function CreatePoll({ signedIn, testMode }: { signedIn: boolean; testMode
                 Times to offer
               </h2>
               <p className="text-pencil">
-                Picked from the free time on your sample calendar, shown in {zoneShort(zone)}.
+                Picked from the free time on{" "}
+                {account.calendar === "google" ? "your Google Calendar" : "a sample calendar (sign in to use yours)"}, shown
+                in {zoneShort(zone)}.
               </p>
             </div>
             {preview.options.length === 0 ? (
@@ -345,12 +425,7 @@ export function CreatePoll({ signedIn, testMode }: { signedIn: boolean; testMode
               </Button>
             ) : (
               <Notice>
-                Sign in to create the poll.{" "}
-                {testMode && (
-                  <a className="underline" href="/api/test-login?next=/new">
-                    Use the test sign-in
-                  </a>
-                )}
+                {account.signedIn ? "Connect your calendar above to create the poll." : "Sign in above to create the poll."}
               </Notice>
             )}
           </section>

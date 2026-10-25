@@ -1,8 +1,24 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { Notice } from "@/components/ui";
 
-export default function Home() {
+const PROBLEMS: Record<string, string> = {
+  failed: "Signing in didn't work. Try again.",
+  expired: "Connecting your calendar took too long. Start again from your poll.",
+};
+
+async function Problem({ searchParams }: { searchParams: Promise<{ signin?: string; calendar?: string }> }) {
+  const { signin, calendar } = await searchParams;
+  const message = (signin && PROBLEMS[signin]) || (calendar && PROBLEMS[calendar]);
+  return message ? <Notice tone="error">{message}</Notice> : null;
+}
+
+export default function Home({ searchParams }: PageProps<"/">) {
   return (
     <div className="space-y-10">
+      <Suspense fallback={null}>
+        <Problem searchParams={searchParams as Promise<{ signin?: string; calendar?: string }>} />
+      </Suspense>
       <section className="space-y-5">
         <h1 className="text-5xl leading-[1.05] sm:text-6xl">
           Stop asking the group chat when everyone's free.
