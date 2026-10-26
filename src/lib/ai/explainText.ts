@@ -1,4 +1,5 @@
 import type { Label } from "@/lib/engine/types";
+import { listNames as list } from "@/lib/format";
 import type { Explanation } from "./schemas";
 
 /** Everything the model is told: computed by code, no raw scores. */
@@ -25,9 +26,6 @@ export type ExplainFacts = {
   advice: string[];
 };
 
-const list = (names: string[]) =>
-  names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-
 function optionLine(o: ExplainFacts["options"][number]): string {
   if (o.reasons.length === 0) {
     return o.canCome.length ? "Everyone who answered can make it." : "No one has answered for this time yet.";
@@ -50,10 +48,6 @@ export function fallbackExplanation(f: ExplainFacts): Explanation {
     }`;
   } else {
     summary = `No time suits everyone. Option ${top.number} (${top.when}) comes closest, without ${list(top.cannotCome)}.`;
-  }
-  const worst = f.options[f.options.length - 1];
-  if (worst && worst !== top && worst.label === "Not recommended") {
-    summary += ` Option ${worst.number} is the weakest: ${worst.reasons[0] ?? "it has the most clashes"}.`;
   }
   return {
     summary,

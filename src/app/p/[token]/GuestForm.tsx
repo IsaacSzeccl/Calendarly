@@ -8,6 +8,7 @@ import { ChoicePicker, StatusMark } from "@/components/Availability";
 import { SlotList } from "@/components/SlotList";
 import { Button, Field, Notice, inputClass } from "@/components/ui";
 import { CalendarCard, type CalendarState } from "./CalendarCard";
+import { PickTime } from "./PickTime";
 import { StatementBox } from "./StatementBox";
 
 export type GuestFormProps = {
@@ -27,6 +28,10 @@ export type GuestFormProps = {
   /** Other guests who connected a calendar: a nudge, never who they are. */
   othersConnected: number;
   testMode: boolean;
+  /** How many more times guests can add (the cap is shared). */
+  room: number;
+  /** Start times a guest could add by hand, worked out on the server; null if the calendar can't be read. */
+  pickable: number[] | null;
 };
 
 const noop = () => () => {};
@@ -91,8 +96,7 @@ export function GuestForm(props: GuestFormProps) {
       <header className="space-y-2">
         <h1 className="text-4xl">{props.title}</h1>
         <p className="text-pencil">
-          {props.organizerName} is finding a time for a {length} meeting. Times are shown in{" "}
-          {zoneShort(zone)}.
+          {props.organizerName} is finding a time for a {length} meeting. Times in {zoneShort(zone)}.
         </p>
       </header>
 
@@ -141,7 +145,7 @@ export function GuestForm(props: GuestFormProps) {
               required
             />
           </Field>
-          <Field label="Email" hint="Only used to tell you about new times and the final time.">
+          <Field label="Email" hint="Only for updates about this poll.">
             <input
               type="email"
               className={inputClass}
@@ -177,8 +181,8 @@ export function GuestForm(props: GuestFormProps) {
           </h2>
           <p className="text-pencil">
             {props.calendar.state === "connected"
-              ? "Filled in from your calendar. Change any answer you like."
-              : "Mark each one. \"Prefer not\" means you could, but would rather not."}
+              ? "Filled in from your calendar. Change any you like."
+              : "“Prefer not” means you could, but would rather not."}
           </p>
         </div>
         <SlotList
@@ -189,7 +193,7 @@ export function GuestForm(props: GuestFormProps) {
               <StatusMark status={votes[slot.id!] ?? "unknown"} />
             ) : (
               <div className="flex flex-wrap items-center gap-2">
-                {slot.source !== "organizer_free" && <span className="text-sm text-pencil">Added from a suggestion</span>}
+                {slot.source !== "organizer_free" && <span className="text-sm text-pencil">Suggested</span>}
                 {props.calendar.marks[slot.id!] && !touched.has(slot.id!) && (
                   <span className="text-sm text-pencil">From your calendar</span>
                 )}
@@ -209,15 +213,32 @@ export function GuestForm(props: GuestFormProps) {
       </section>
 
       {!readOnly && (
-        <StatementBox
-          token={props.token}
-          zone={zone}
-          ensureSaved={save}
-          onAdded={(added) => {
-            setVotes((v) => ({ ...v, ...Object.fromEntries(added.map((o) => [o.id, "yes" as const])) }));
-            router.refresh();
-          }}
-        />
+        <section aria-labelledby="suggest" className="space-y-4">
+          <h2 id="suggest" className="text-2xl">
+            Suggest a time
+          </h2>
+          <PickTime
+            token={props.token}
+            zone={zone}
+            starts={props.pickable}
+            room={props.room}
+            durationMinutes={props.durationMinutes}
+            ensureSaved={save}
+            onAdded={(added) => {
+              setVotes((v) => ({ ...v, [added.id]: "yes" }));
+              router.refresh();
+            }}
+          />
+          <StatementBox
+            token={props.token}
+            zone={zone}
+            ensureSaved={save}
+            onAdded={(added) => {
+              setVotes((v) => ({ ...v, ...Object.fromEntries(added.map((o) => [o.id, "yes" as const])) }));
+              router.refresh();
+            }}
+          />
+        </section>
       )}
 
       {!readOnly && (
@@ -225,8 +246,7 @@ export function GuestForm(props: GuestFormProps) {
           {error && <Notice tone="error">{error}</Notice>}
           {saved && (
             <Notice>
-              Thanks, {saved}. Your answers are saved. You can come back to this link and change them until{" "}
-              {props.organizerName} picks a time.
+              Saved, thanks {saved}. You can change your answers here until {props.organizerName} picks a time.
             </Notice>
           )}
           <Button type="submit" disabled={saving}>

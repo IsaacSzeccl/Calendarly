@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 import { explain } from "@/lib/ai/explain";
 import { fallbackExplanation } from "@/lib/ai/explainText";
@@ -10,12 +11,13 @@ import { getOrganizer, testModeOn } from "@/lib/auth/organizer";
 import { findExplanation } from "@/lib/db/aiRuns";
 import { getPoll } from "@/lib/db/polls";
 import type { Label } from "@/lib/engine/types";
-import { dateTimeLabel, slotLabel, zoneShort } from "@/lib/format";
+import { dateTimeLabel, listNames, slotLabel, zoneShort } from "@/lib/format";
 import { loadDashboard, type Dashboard } from "@/lib/polls/dashboard";
 import { whoComesAlong } from "@/lib/polls/roster";
 import { StatusIcon, StatusMark } from "@/components/Availability";
+import { SlotList } from "@/components/SlotList";
 import { Notice } from "@/components/ui";
-import { ClosePollButton, CopyLink, PickButton, RefreshButton } from "./controls";
+import { ClosePollButton, CopyLink, PickButton, RefreshButton, ShareCard } from "./controls";
 
 export const metadata: Metadata = { title: "Poll dashboard · Calendarly" };
 
@@ -42,7 +44,7 @@ function AiNote({ explanation, basis, pending }: { explanation: Explanation | nu
           ))}
         </div>
       ) : (
-        <p className="font-serif text-[1.15rem] text-pencil">Reading the answers and writing you a note…</p>
+        <p className="font-serif text-[1.15rem] text-pencil">Writing you a note…</p>
       )}
       <p className="mt-4 text-sm text-pencil">This is {basis}.</p>
     </aside>
@@ -52,6 +54,8 @@ function AiNote({ explanation, basis, pending }: { explanation: Explanation | nu
 function Ranking({ d, explanation, canPick }: { d: Dashboard; explanation: Explanation; canPick: boolean }) {
   const zone = d.poll.rules.organizerTimezone;
   const lines = new Map(explanation.perOption.map((p) => [p.option, p.text]));
+  // A line identical to one above it says nothing new; the counts below name who can't come.
+  const shown = new Set<string>();
   return (
     <ol className="border-t border-rule">
       {d.ranked.map((a, rank) => {
@@ -77,7 +81,7 @@ function Ranking({ d, explanation, canPick }: { d: Dashboard; explanation: Expla
                   <svg aria-hidden viewBox="0 0 20 20" className="size-4 fill-current">
                     <path d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z" />
                   </svg>
-                  {closest ? "Closest fit: no time works for everyone" : "Best time"}
+                  {closest ? "Closest fit" : "Best time"}
                 </p>
               )}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -86,19 +90,29 @@ function Ranking({ d, explanation, canPick }: { d: Dashboard; explanation: Expla
                   {slotLabel(a.option.start, a.option.end, zone)}
                 </h3>
                 <span className={`rounded px-2 py-0.5 text-sm font-medium ${labelLook[a.label]}`}>{a.label}</span>
-                {a.option.source !== "organizer_free" && (
-                  <span className="text-sm text-pencil">Added from a guest's suggestion</span>
-                )}
+                {a.option.source !== "organizer_free" && <span className="text-sm text-pencil">Suggested</span>}
                 {picked && <span className="rounded bg-ribbon px-2 py-0.5 text-sm font-semibold text-ribbon-ink">Picked</span>}
               </div>
-              <p>{lines.get(a.number)}</p>
+              {(() => {
+                const line = lines.get(a.number);
+                if (!line || shown.has(line)) return null;
+                shown.add(line);
+                return <p>{line}</p>;
+              })()}
               <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-pencil">
                 <span className="inline-flex items-center gap-1 text-yes"><StatusIcon status="yes" />{a.canCome.length} yes</span>
-                <span className="inline-flex items-center gap-1 text-maybe"><StatusIcon status="prefer_not" />{a.preferNot.length} prefer not</span>
-                <span className="inline-flex items-center gap-1 text-no"><StatusIcon status="no" />{a.cannotCome.length} no</span>
+                {a.preferNot.length > 0 && (
+                  <span className="inline-flex items-center gap-1 text-maybe"><StatusIcon status="prefer_not" />{a.preferNot.length} prefer not</span>
+                )}
+                {a.cannotCome.length > 0 && (
+                  <span className="inline-flex items-center gap-1 text-no">
+                    <StatusIcon status="no" />
+                    {a.cannotCome.length} no ({listNames(a.cannotCome)})
+                  </span>
+                )}
                 {a.unknown.length > 0 && <span>{a.unknown.length} not answered</span>}
               </p>
-              {canPick && <PickButton pollId={d.poll.id} optionId={a.option.id} number={a.number} />}
+              {canPick && <PickButton pollId={d.poll.id} optionId={a.option.id} number={a.number} primary={top} />}
             </div>
           </li>
         );
@@ -108,12 +122,14 @@ function Ranking({ d, explanation, canPick }: { d: Dashboard; explanation: Expla
 }
 
 /** Phones: the note, then the times. Wide screens: the times, with the note pinned beside them. */
-function NoteBeside({ note, children }: { note: ReactNode; children: ReactNode }) {
+function NoteBeside({ note, zone, children }: { note: ReactNode; zone: string; children: ReactNode }) {
   return (
     <div className="space-y-10 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-x-12 lg:space-y-0">
       <div className="lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1">{note}</div>
       <section aria-labelledby="ranking" className="space-y-3 lg:col-start-1 lg:row-start-1">
-        <h2 id="ranking" className="text-2xl">Times, best first</h2>
+        <h2 id="ranking" className="text-2xl">
+          Times, best first <span className="font-sans text-sm text-pencil">({zoneShort(zone)})</span>
+        </h2>
         {children}
       </section>
     </div>
@@ -123,7 +139,7 @@ function NoteBeside({ note, children }: { note: ReactNode; children: ReactNode }
 async function NoteAndRanking({ d, canPick }: { d: Dashboard; canPick: boolean }) {
   const { explanation } = await explain(d.facts, { find: findExplanation });
   return (
-    <NoteBeside note={<AiNote explanation={explanation} basis={d.basis} />}>
+    <NoteBeside note={<AiNote explanation={explanation} basis={d.basis} />} zone={d.poll.rules.organizerTimezone}>
       <Ranking d={d} explanation={explanation} canPick={canPick} />
     </NoteBeside>
   );
@@ -139,9 +155,7 @@ function MeetAgain({ d }: { d: Dashboard }) {
       {people.length > 0 ? (
         <>
           <p className="text-pencil">
-            {people.map((p) => p.name).join(", ")} asked to be remembered.{" "}
-            {people.length === 1 ? "Their calendar answers" : "Their calendars answer"} your next poll for them, so
-            they won't need to fill it in.
+            {people.map((p) => p.name).join(", ")} asked to be remembered. Their calendar answers for them next time.
           </p>
           <Link
             href={`/new?again=${d.poll.id}`}
@@ -151,25 +165,39 @@ function MeetAgain({ d }: { d: Dashboard }) {
           </Link>
         </>
       ) : (
-        <p className="text-pencil">
-          Nobody has asked to be remembered yet. Guests who connect a calendar can tick "remember me", and their
-          calendar answers your next poll for them.
-        </p>
+        <p className="text-pencil">Guests who connect a calendar can ask to be remembered for next time.</p>
       )}
       <p>
-        <Link href="/new" className="underline underline-offset-4">Start a new poll from scratch</Link>
+        <Link href="/new" className="underline underline-offset-4">Start a new poll</Link>
       </p>
     </section>
   );
 }
 
-function VotesTable({ d }: { d: Dashboard }) {
+/** Who answered and how: one row per person, marks per option in time order. */
+function Answers({ d }: { d: Dashboard }) {
   const zone = d.poll.rules.organizerTimezone;
   const byTime = [...d.ranked].sort((a, b) => a.number - b.number);
+  const required = new Set(d.poll.rules.people.filter((p) => p.required).map((p) => p.name.toLowerCase()));
+  const how = (id: string) => {
+    const g = d.guests.find((x) => x.id === id);
+    if (!g) return "";
+    if (g.isSample) return "sample guest";
+    const source = d.needsReconnect.includes(g.name)
+      ? "calendar expired"
+      : d.sampleCalendarGuests.includes(g.id)
+        ? "sample calendar"
+        : g.calendarConnectionId
+          ? "calendar"
+          : "";
+    // Someone in another timezone is worth knowing about; the organizer's own zone goes without saying.
+    const elsewhere = g.timezone !== zone ? zoneShort(g.timezone) : "";
+    return [source, elsewhere].filter(Boolean).join(", ");
+  };
   if (d.respondents.length === 0) return null;
   return (
-    <section aria-labelledby="votes" className="space-y-3">
-      <h2 id="votes" className="text-2xl">Everyone's answers</h2>
+    <section aria-labelledby="answers" className="space-y-3">
+      <h2 id="answers" className="text-2xl">Answers</h2>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left">
           <thead>
@@ -183,17 +211,31 @@ function VotesTable({ d }: { d: Dashboard }) {
             </tr>
           </thead>
           <tbody>
-            {d.respondents.map((r) => (
-              <tr key={r.id} className="border-b border-rule">
-                <th scope="row" className="py-2 pr-3 font-medium">
-                  {r.name}
-                  {d.guests.find((g) => g.id === r.id)?.isSample && <span className="ml-1 text-sm font-normal text-pencil">(sample)</span>}
+            {d.respondents.map((r) => {
+              const g = d.guests.find((x) => x.id === r.id);
+              return (
+                <tr key={r.id} className="border-b border-rule align-top">
+                  <th scope="row" className="py-2 pr-3 font-medium">
+                    {r.name}
+                    {required.has(r.name.toLowerCase()) && <span className="ml-2 text-sm font-normal text-ribbon">must attend</span>}
+                    {how(r.id) && <span className="block text-sm font-normal text-pencil">{how(r.id)}</span>}
+                    {g?.preferencesSummary && <span className="block max-w-56 text-sm font-normal text-pencil">“{g.preferencesSummary}”</span>}
+                  </th>
+                  {byTime.map((a) => (
+                    <td key={a.option.id} className="px-2 py-2 text-center">
+                      <StatusMark status={a.statuses[r.id] ?? "unknown"} compact />
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+            {d.waiting.map((name) => (
+              <tr key={name} className="border-b border-rule text-pencil">
+                <th scope="row" className="py-2 pr-3 font-normal">
+                  {name}
+                  {required.has(name.toLowerCase()) && <span className="ml-2 text-sm text-ribbon">must attend</span>}
                 </th>
-                {byTime.map((a) => (
-                  <td key={a.option.id} className="px-2 py-2 text-center">
-                    <StatusMark status={a.statuses[r.id] ?? "unknown"} compact />
-                  </td>
-                ))}
+                <td colSpan={byTime.length} className="px-2 py-2 text-center text-sm">waiting</td>
               </tr>
             ))}
           </tbody>
@@ -203,55 +245,17 @@ function VotesTable({ d }: { d: Dashboard }) {
   );
 }
 
-function People({ d }: { d: Dashboard }) {
-  const required = new Set(d.poll.rules.people.filter((p) => p.required).map((p) => p.name.toLowerCase()));
-  const organizerCalendar = d.poll.organizerCalendar.kind === "sample" ? "sample calendar" : "calendar connected";
-  return (
-    <section aria-labelledby="people" className="space-y-3">
-      <h2 id="people" className="text-2xl">People</h2>
-      <ul className="divide-y divide-rule border-y border-rule">
-        <li className="flex flex-wrap justify-between gap-2 py-3">
-          <span className="font-medium">{d.poll.organizerName} (you)</span>
-          <span className="text-sm text-pencil">{organizerCalendar}</span>
-        </li>
-        {d.guests.map((g) => (
-          <li key={g.id} className="space-y-1 py-3">
-            <div className="flex flex-wrap justify-between gap-2">
-              <span className="font-medium">
-                {g.name}
-                {required.has(g.name.toLowerCase()) && <span className="ml-2 text-sm font-normal text-ribbon">must attend</span>}
-              </span>
-              <span className="text-sm text-pencil">
-                {g.isSample && "sample guest with made-up answers, "}
-                {d.needsReconnect.includes(g.name)
-                  ? "calendar needs reconnecting"
-                  : d.sampleCalendarGuests.includes(g.id)
-                    ? "sample calendar connected"
-                    : g.calendarConnectionId
-                      ? "calendar connected"
-                      : "answered by hand"}
-                , {zoneShort(g.timezone)}
-              </span>
-            </div>
-            {g.preferencesSummary && <p className="text-sm text-pencil">{g.preferencesSummary}</p>}
-          </li>
-        ))}
-        {d.waiting.map((name) => (
-          <li key={name} className="flex flex-wrap justify-between gap-2 py-3 text-pencil">
-            <span>
-              {name}
-              {required.has(name.toLowerCase()) && <span className="ml-2 text-sm text-ribbon">must attend</span>}
-            </span>
-            <span className="text-sm">waiting</span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-async function DashboardBody({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+async function DashboardBody({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ new?: string }>;
+}) {
+  // The ranking depends on the moment of the request (open or closed, live calendars): never a prerendered shell.
+  await connection();
+  const [{ id }, { new: justCreated }] = await Promise.all([params, searchParams]);
+  const isNew = justCreated === "1";
   const organizer = await getOrganizer();
   if (!organizer) {
     return (
@@ -277,72 +281,91 @@ async function DashboardBody({ params }: { params: Promise<{ id: string }> }) {
   const zone = poll.rules.organizerTimezone;
   const finalOption = d.options.find((o) => o.id === poll.finalOptionId);
   const canPick = d.status !== "finalized" && d.options.length > 0;
+  const showShare = d.status === "open" && (isNew || d.respondents.length === 0);
 
   return (
     <div className="space-y-10">
-      <header className="max-w-2xl space-y-3">
-        <h1 className="text-4xl">{poll.title}</h1>
-        <p className="text-lg">
-          <strong className="font-semibold">{d.completion.text}</strong> have answered
-          {d.status === "open" && poll.closeAt && `, closes ${dateTimeLabel(poll.closeAt, zone)}`}
-          {d.status === "closed" && ". The poll is closed to new answers"}.
-        </p>
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-4xl">{poll.title}</h1>
+          <p className="text-lg">
+            <strong className="font-semibold">{d.completion.text}</strong> answered
+            {d.status === "open" && poll.closeAt && `, closes ${dateTimeLabel(poll.closeAt, zone)}`}
+            {d.status === "closed" && ", closed"}
+          </p>
+        </div>
         <div className="flex flex-wrap gap-3">
-          <CopyLink url={shareUrl} />
+          {!showShare && <CopyLink url={shareUrl} />}
           <RefreshButton />
           {d.status === "open" && <ClosePollButton pollId={poll.id} />}
         </div>
-        <p className="text-sm text-pencil">Times are shown in {zoneShort(zone)}.</p>
       </header>
+
+      {showShare && <ShareCard url={shareUrl} />}
 
       {finalOption && (
         <Notice>
           You picked {slotLabel(finalOption.start, finalOption.end, zone)}.{" "}
-          {poll.googleEventId ? "It's on your calendar" : "It couldn't be added to your calendar"}, and everyone who
-          answered gets a confirmation email.
+          {poll.googleEventId ? "It's on your calendar" : "It couldn't be added to your calendar"}, and everyone gets an
+          email.
         </Notice>
       )}
       {d.failedEmails > 0 && (
         <Notice tone="error">
-          {d.failedEmails === 1 ? "1 email wasn't sent." : `${d.failedEmails} emails weren't sent.`} Everything else
-          still works.
+          {d.failedEmails === 1 ? "1 email wasn't sent." : `${d.failedEmails} emails weren't sent.`}
         </Notice>
       )}
       {d.needsReconnect.length > 0 && (
         <Notice>
-          {d.needsReconnect.join(", ")} connected a calendar that can't be read any more, so the ranking uses
-          their votes only. They can reconnect from the poll link.
-        </Notice>
-      )}
-      {d.respondents.length === 0 && (
-        <Notice>
-          No answers yet. Send the poll link to the group; answers appear here when you refresh.
+          {d.needsReconnect.join(", ")}: calendar needs reconnecting, so only their votes count.
         </Notice>
       )}
 
-      <Suspense
-        fallback={
-          <NoteBeside note={<AiNote explanation={null} basis={d.basis} pending />}>
-            {/* Picking waits for the note, so a click can't land on this placeholder list. */}
-            <Ranking d={d} explanation={fallbackExplanation(d.facts)} canPick={false} />
-          </NoteBeside>
-        }
-      >
-        <NoteAndRanking d={d} canPick={canPick} />
-      </Suspense>
+      {d.respondents.length === 0 ? (
+        <section aria-labelledby="ranking" className="max-w-2xl space-y-3">
+          <h2 id="ranking" className="text-2xl">
+            Times in the poll <span className="font-sans text-sm text-pencil">({zoneShort(zone)})</span>
+          </h2>
+          <SlotList
+            slots={d.options}
+            zone={zone}
+            extra={(slot) =>
+              canPick ? <PickButton pollId={poll.id} optionId={slot.id} number={d.ranked.find((a) => a.option.id === slot.id)?.number ?? 0} /> : null
+            }
+          />
+          {d.status === "open" ? (
+            <>
+              {d.waiting.length > 0 && <p className="text-pencil">Waiting for {listNames(d.waiting)}.</p>}
+              <p className="text-sm text-pencil">The ranking and a note appear here once people answer.</p>
+            </>
+          ) : (
+            d.status === "closed" && <p className="text-sm text-pencil">Nobody answered before the poll closed. You can still pick a time.</p>
+          )}
+        </section>
+      ) : (
+        <Suspense
+          fallback={
+            <NoteBeside note={<AiNote explanation={null} basis={d.basis} pending />} zone={zone}>
+              {/* Picking waits for the note, so a click can't land on this placeholder list. */}
+              <Ranking d={d} explanation={fallbackExplanation(d.facts)} canPick={false} />
+            </NoteBeside>
+          }
+        >
+          <NoteAndRanking d={d} canPick={canPick} />
+        </Suspense>
+      )}
 
-      <VotesTable d={d} />
-      <People d={d} />
+      <Answers d={d} />
 
       <MeetAgain d={d} />
     </div>
   );
 }
 
-export default function PollDashboardPage({ params }: PageProps<"/poll/[id]">) {
+export default function PollDashboardPage({ params, searchParams }: PageProps<"/poll/[id]">) {
   return (
     <Suspense fallback={<p className="text-pencil">Loading your poll…</p>}>
-      <DashboardBody params={params} />
+      <DashboardBody params={params} searchParams={searchParams as Promise<{ new?: string }>} />
     </Suspense>
   );
 }

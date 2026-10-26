@@ -1,4 +1,5 @@
 import { config } from "@/lib/config";
+import { listNames as list } from "@/lib/format";
 import { findPerson, predictedNos, softPenalties } from "./constraints";
 import { overlaps } from "./time";
 import type {
@@ -225,9 +226,6 @@ export function conditionalAdvice(ranked: Assessment[], peopleCounted: number): 
     });
   return { best, ifRequired, noPerfectSlot: top.cannotCome.length > 0 };
 }
-
-const list = (names: string[]) =>
-  names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 
 /** Plain sentences for the advice, used as-is if the model is unavailable. */
 export function adviceSentences(advice: Advice): string[] {

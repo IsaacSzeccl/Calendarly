@@ -161,13 +161,13 @@ export async function addOptions(
 }
 
 /**
- * Add a time a guest suggested, from their typed statement or their connected calendar.
+ * Add a time a guest suggested: from their typed statement, their calendar, or picked by hand.
  * Returns null when the database refuses it: a duplicate, or the poll's cap is reached.
  */
 export async function addGuestOption(
   pollId: string,
   slot: Interval,
-  from: { statementId: string } | "calendar",
+  from: { statementId: string } | "guest",
 ): Promise<SlotOption | null> {
   const result = await db()
     .from("options")
@@ -175,8 +175,8 @@ export async function addGuestOption(
       poll_id: pollId,
       starts_at: new Date(slot.start).toISOString(),
       ends_at: new Date(slot.end).toISOString(),
-      source: from === "calendar" ? "guest_added" : "ai_added",
-      added_by_statement_id: from === "calendar" ? null : from.statementId,
+      source: from === "guest" ? "guest_added" : "ai_added",
+      added_by_statement_id: from === "guest" ? null : from.statementId,
     })
     .select()
     .single();

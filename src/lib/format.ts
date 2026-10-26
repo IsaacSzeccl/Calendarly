@@ -1,5 +1,10 @@
 import { DateTime } from "luxon";
 
+/** "Sam", "Sam and Leo", "Sam, Leo and Mei". */
+export function listNames(names: string[]): string {
+  return names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
 export function dayLabel(ms: number, zone: string): string {
   return DateTime.fromMillis(ms, { zone }).toFormat("ccc d LLL");
 }

@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   const slot = suggest.suggestions.find((s) => s.start === start);
   if (!slot) return Response.json({ error: "That time isn't free any more. Reload to see fresh suggestions." }, { status: 409 });
 
-  const option = await addGuestOption(poll.id, slot, "calendar");
+  const option = await addGuestOption(poll.id, slot, "guest");
   if (!option) {
     return Response.json({ error: "That time was just added, or the poll is full. Reload to see where things are." }, { status: 409 });
   }

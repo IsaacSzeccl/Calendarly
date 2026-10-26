@@ -1,15 +1,23 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { getGuestByToken, getGuests, getOptions, getPollByToken, getVotes, statusOf } from "@/lib/db/polls";
 import { overlaps } from "@/lib/engine/time";
 import { testModeOn } from "@/lib/auth/organizer";
+import { config } from "@/lib/config";
 import { readGuestToken } from "@/lib/guest/cookie";
 import { suggestFromCalendar } from "@/lib/polls/calendarSuggest";
+import { pickableStarts } from "@/lib/polls/pickable";
 import { guestBusy } from "@/lib/polls/guestCalendar";
 import { GuestForm, type GuestFormProps } from "./GuestForm";
 
 export const metadata: Metadata = { title: "Answer a poll · Calendarly" };
+
+/** The moment of this request. Only read after connection(), so it's never part of a prerendered shell. */
+function requestTime(): number {
+  return Date.now();
+}
 
 async function GuestPoll({
   params,
@@ -18,6 +26,8 @@ async function GuestPoll({
   params: Promise<{ token: string }>;
   searchParams: Promise<{ calendar?: string }>;
 }) {
+  // Answers, calendars and "is it still open?" depend on the moment of the request: never part of a prerendered shell.
+  await connection();
   const [{ token }, { calendar: calendarResult }] = await Promise.all([params, searchParams]);
   const poll = await getPollByToken(token);
   if (!poll) notFound();
@@ -49,6 +59,9 @@ async function GuestPoll({
   const suggest =
     me && calendar.state === "connected" && statusOf(poll) === "open" ? await suggestFromCalendar(poll, me) : null;
 
+  const room = config.guestSlotCap - options.filter((o) => o.source !== "organizer_free").length;
+  const pickable = statusOf(poll) === "open" && room > 0 ? await pickableStarts(poll, options, requestTime()) : [];
+
   const claimed = new Set(guests.filter((g) => g.id !== me?.id).map((g) => g.name.toLowerCase()));
   const finalOption = options.find((o) => o.id === poll.finalOptionId) ?? null;
 
@@ -77,6 +90,8 @@ async function GuestPoll({
     },
     othersConnected: guests.filter((g) => g.id !== me?.id && g.calendarConnectionId).length,
     testMode: testModeOn(),
+    room,
+    pickable,
     calendarResult: calendarResult ?? null,
   };
   return <GuestForm {...props} />;

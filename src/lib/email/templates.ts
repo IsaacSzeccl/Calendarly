@@ -7,6 +7,7 @@ const escape = (s: string) =>
 function wrap(title: string, paragraphs: string[], link?: { href: string; label: string }): string {
   return `<!doctype html><html><body style="margin:0;background:#faf7f0;padding:24px;font-family:Georgia,serif;color:#2a2420">
 <div style="max-width:520px;margin:0 auto">
+<p style="margin:0 0 20px;padding-left:10px;border-left:6px solid #a8452b;font-size:18px;font-weight:600;letter-spacing:-0.2px">Calendarly</p>
 <h1 style="font-size:22px;font-weight:600;margin:0 0 16px">${escape(title)}</h1>
 ${paragraphs.map((p) => `<p style="font-family:Helvetica,Arial,sans-serif;font-size:16px;line-height:1.5;margin:0 0 12px">${escape(p)}</p>`).join("\n")}
 ${link ? `<p style="margin:20px 0"><a href="${escape(link.href)}" style="background:#a8452b;color:#fff;text-decoration:none;padding:12px 18px;border-radius:6px;font-family:Helvetica,Arial,sans-serif;font-weight:600;display:inline-block">${escape(link.label)}</a></p>` : ""}

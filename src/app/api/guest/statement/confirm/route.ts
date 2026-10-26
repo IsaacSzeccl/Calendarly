@@ -25,7 +25,7 @@ const body = z.object({
 });
 
 /**
- * Step 2: the guest said "Looks right". Code, not the model, decides what is
+ * Step 2: the guest said "Add these" (or "Send as a note"). Code, not the model, decides what is
  * added: only where the organizer is free, no duplicates, at most 3 per poll.
  */
 export async function POST(request: Request) {

@@ -7,7 +7,7 @@ import { explanationSchema, type Explanation } from "./schemas";
 export type { ExplainFacts } from "./explainText";
 
 const SYSTEM = `You write the short note at the top of a group-scheduling poll, for the organizer.
-Write like a helpful colleague leaving a note: plain, warm, specific, no greeting, no sign-off.
+Write like a colleague leaving a sticky note: short, plain, specific. No greeting, no sign-off, no filler.
 
 You are given facts that code has already worked out. Use only those facts:
 - Refer to times as "option N" and may add the day and time given.
@@ -16,15 +16,18 @@ You are given facts that code has already worked out. Use only those facts:
 - You may mention that a different meeting length could help, but never propose a slot.
 
 Write:
-- summary: 2 to 4 sentences. Say which option is best and why, and which is weakest and why. Name the trade-off with people's names ("Option 1 has everyone but Leo; option 3 has Leo but not Priya"). If noClearFit is true, say plainly that nothing is a clear fit and that, since they only want to meet if necessary, waiting or widening the dates may be better. Do not include the "based on" line; it is shown separately.
-- conditional: rewrite each sentence in "advice" in your own words, keeping the same option numbers and names. Empty if advice is empty.
-- perOption: one short sentence for every option, keyed by its number, about who can and can't come and any preference it breaks.
+- summary: one or two short sentences, at most 35 words. Say which option is best and the main trade-off, with names ("Option 1 has everyone but Leo."). If people haven't answered yet, say so in a few words. If noClearFit is true, say nothing is a clear fit and waiting or widening the dates may be better. Don't repeat what perOption says, and don't include the "based on" line.
+- conditional: each sentence in "advice", rewritten in at most 15 words, keeping the same option numbers and names. Empty if advice is empty.
+- perOption: for every option, keyed by its number, a fragment of at most 10 words about who can't come or which preference it breaks ("Everyone can come.", "Leo can't; mornings."). 
 
 Reply with only a JSON object matching this JSON Schema:
 ${JSON.stringify(z.toJSONSchema(explanationSchema))}`;
 
+/** Bump when the note's style changes, so older notes aren't reused from the cache. */
+const NOTE_STYLE = "short-v2";
+
 export function factsHash(facts: ExplainFacts): string {
-  return createHash("sha256").update(JSON.stringify(facts)).digest("hex").slice(0, 32);
+  return createHash("sha256").update(NOTE_STYLE + JSON.stringify(facts)).digest("hex").slice(0, 32);
 }
 
 /** Does the note stick to the facts? Every option covered, advice kept, numbers real. */

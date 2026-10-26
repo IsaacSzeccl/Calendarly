@@ -63,9 +63,10 @@ export const parsedStatementSchema = z.object({
 export type ParsedStatement = z.infer<typeof parsedStatementSchema>;
 
 /** Job 3: computed facts → sentences. */
+// Length limits keep the note short; an answer that runs over is retried once, then replaced by code's own note.
 export const explanationSchema = z.object({
-  summary: z.string().min(1),
-  conditional: z.array(z.string()),
-  perOption: z.array(z.object({ option: z.number().int().min(1), text: z.string().min(1) })),
+  summary: z.string().min(1).max(300),
+  conditional: z.array(z.string().max(200)),
+  perOption: z.array(z.object({ option: z.number().int().min(1), text: z.string().min(1).max(120) })),
 });
 export type Explanation = z.infer<typeof explanationSchema>;

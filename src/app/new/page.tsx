@@ -32,13 +32,10 @@ async function CreatePollForOrganizer({
 
 export default function NewPollPage({ searchParams }: PageProps<"/new">) {
   return (
-    <div className="max-w-2xl space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-4xl">Find a time</h1>
-        <p className="max-w-prose text-pencil">
-          Describe the meeting the way you'd tell a friend. I'll turn it into a poll and suggest times
-          when you're free.
-        </p>
+    <div className="space-y-8">
+      <div className="space-y-1">
+        <h1 className="text-4xl">New poll</h1>
+        <p className="text-pencil">Describe it like you'd tell a friend. I'll find times you're free.</p>
       </div>
       <Suspense fallback={<p className="text-pencil">Loading…</p>}>
         <CreatePollForOrganizer searchParams={searchParams as Promise<{ calendar?: string; again?: string }>} />

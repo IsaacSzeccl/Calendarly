@@ -202,6 +202,23 @@ describe("addAiSlots", () => {
     expect(res.skipped.filter((s) => s.why === "cap")).toHaveLength(2);
   });
 
+  it("accepts a single time a guest picked by hand, exactly as picked", () => {
+    const picked = { start: at("2026-10-28T15:15"), end: at("2026-10-28T16:15") };
+    expect(addAiSlots({ ...base, ranges: [picked] }).added).toEqual([picked]);
+  });
+
+  it("accepts every start the picker offers (the candidate pool minus existing times)", () => {
+    const rules_ = tomJamie;
+    const organizerBusy = [{ start: at("2026-10-28T09:00"), end: at("2026-10-28T12:00") }];
+    const offered = buildCandidatePool(rules_, organizerBusy, NOW).filter(
+      (s) => !existing.some((o) => o.start < s.end && s.start < o.end),
+    );
+    expect(offered.length).toBeGreaterThan(10);
+    for (const slot of offered) {
+      expect(addAiSlots({ ...base, rules: rules_, organizerBusy, ranges: [slot] }).added).toEqual([slot]);
+    }
+  });
+
   it("never adds a slot outside reasonable hours", () => {
     const res = addAiSlots({
       ...base,

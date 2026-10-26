@@ -15,10 +15,10 @@ export type CalendarState = {
 };
 
 const CALENDAR_RESULT: Record<string, string> = {
-  connected: "Your calendar is connected. Your answers below are filled in from when you're busy; change any of them.",
-  declined: "Calendar access wasn't given. You can still answer by hand.",
-  failed: "Connecting your calendar didn't work. You can try again or answer by hand.",
-  "save-first": "Add your name and email first, then connect your calendar.",
+  connected: "Calendar connected.",
+  declined: "Calendar access wasn't given. You can answer by hand.",
+  failed: "Connecting didn't work. Try again, or answer by hand.",
+  "save-first": "Add your name and email first.",
 };
 
 /**
@@ -102,7 +102,7 @@ export function CalendarCard({
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error ?? "That didn't work. Try again.");
-      setAdded("Added to the poll and marked yes for you. Everyone who already answered will get an email.");
+      setAdded("Added, and marked yes for you.");
       onAdded(json.added);
       router.refresh();
     } catch (e) {
@@ -125,9 +125,8 @@ export function CalendarCard({
             <h2 id="calendar" className="text-2xl">
               Your calendar is answering
             </h2>
-            <p className="text-pencil">
-              {calendar.sample ? "A sample calendar (test mode) is connected. " : "Your Google Calendar is connected. "}
-              The times below are filled in from when you're busy. Only busy or free is read, never your events.
+            <p className="text-sm text-pencil">
+              {calendar.sample ? "Sample calendar (test mode). " : ""}Only free or busy is read.
             </p>
           </div>
           <Button variant="plain" type="button" disabled={busy !== null} onClick={disconnect}>
@@ -144,30 +143,24 @@ export function CalendarCard({
             onChange={(e) => toggleRemember(e.target.checked)}
           />
           <span>
-            <span className="block font-medium">Remember me for future meetings with {organizerFirst}</span>
-            <span className="block text-sm text-pencil">
-              Next time {organizerFirst} meets this group, your calendar answers for you and you get a link to check
-              it. Untick this or disconnect any time to stop.
-            </span>
+            <span className="block font-medium">Remember me for {organizerFirst}'s next meetings</span>
+            <span className="block text-sm text-pencil">Your calendar answers for you next time.</span>
           </span>
         </label>
 
         {list === "full" && (
-          <p className="text-sm text-pencil">This poll already has as many suggested times as it can take.</p>
+          <p className="text-sm text-pencil">The poll is full, so no more times can be added.</p>
         )}
         {Array.isArray(list) && list.length === 0 && (
-          <p className="text-sm text-pencil">
-            No other times inside the poll's dates fit both your calendar and {organizerFirst}'s.
-          </p>
+          <p className="text-sm text-pencil">No other times suit both you and {organizerFirst}.</p>
         )}
         {Array.isArray(list) && list.length > 0 && (
           <div className="space-y-3">
             <div>
-              <h3 className="text-xl">More times that fit your calendar</h3>
+              <h3 className="text-xl">More times that suit you</h3>
               <p className="text-sm text-pencil">
                 Free for you and {organizerFirst}
-                {othersConnected > 0 && ", and best for the others who connected a calendar"}. Add one if the times
-                below don't suit you.
+                {othersConnected > 0 && ", best for the others too"}.
               </p>
             </div>
             <SlotList
@@ -197,21 +190,16 @@ export function CalendarCard({
     <section aria-labelledby="calendar" className="space-y-4 rounded-md border border-ribbon/40 bg-paper-deep p-5">
       <div className="space-y-1">
         <h2 id="calendar" className="text-2xl">
-          {reconnect ? "Reconnect your calendar" : "Let your calendar answer for you"}
+          {reconnect ? "Reconnect your calendar" : "Answer with your calendar"}
         </h2>
-        <p className="text-pencil">
-          {reconnect
-            ? "Your calendar connection expired. Reconnect to keep your answers and suggestions up to date."
-            : "The quickest way to answer, and the most accurate one:"}
-        </p>
+        {reconnect && <p className="text-pencil">Your calendar connection expired.</p>}
       </div>
       {!reconnect && (
         <ul className="space-y-2">
           {[
-            "Every time below is filled in for you in one step.",
-            `If none of them work, you'll get new times that fit both your calendar and ${organizerFirst}'s.`,
-            `${organizerFirst} can see who really can come, so you're less likely to end up with a time you can't make.`,
-            `Next time ${organizerFirst} meets this group, your calendar can answer for you, if you choose.`,
+            "Fills in every answer for you",
+            "Suggests times that suit you",
+            "Can answer for you next time",
           ].map((line) => (
             <li key={line} className="flex gap-2">
               <span className="mt-1 text-yes">
@@ -224,8 +212,7 @@ export function CalendarCard({
       )}
       {othersConnected > 0 && !reconnect && (
         <p className="text-sm">
-          {othersConnected === 1 ? "1 other person has" : `${othersConnected} other people have`} already connected
-          theirs.
+          {othersConnected === 1 ? "1 person has" : `${othersConnected} people have`} already connected.
         </p>
       )}
       {result}
@@ -244,9 +231,7 @@ export function CalendarCard({
           </button>
         )}
       </div>
-      <p className="text-sm text-pencil">
-        Only busy or free is read, never what your events are. You can disconnect any time, or answer by hand below.
-      </p>
+      <p className="text-sm text-pencil">Only free or busy is read. Disconnect any time.</p>
     </section>
   );
 }

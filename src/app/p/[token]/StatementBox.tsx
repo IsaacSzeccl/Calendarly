@@ -10,10 +10,10 @@ type Added = { id: string; start: number; end: number };
 
 const OUTCOME: Record<string, string> = {
   added: "", // built from the count below
-  busy: "Those times don't work for the organizer (they're busy, or it's outside the times they set), so nothing new was added. Your note was still passed on.",
-  duplicate: "Those times are already in the poll, so nothing new was added. Your note was passed on.",
-  cap: "This poll already has as many suggested times as it can take. Your note was passed on.",
-  note: "Your note was passed on to the organizer. No new times were added.",
+  busy: "The organizer isn't free then, so no times were added. Your note was sent.",
+  duplicate: "Those times are already in the poll. Your note was sent.",
+  cap: "The poll is full, so no times were added. Your note was sent.",
+  note: "Your note was sent to the organizer.",
 };
 
 function datesLabel(d: { startDate: string; endDate: string }): string {
@@ -88,7 +88,7 @@ export function StatementBox({
       const added: Added[] = json.added;
       setDone(
         json.outcome === "added"
-          ? `Added ${added.length} new time${added.length === 1 ? "" : "s"}, marked yes for you. Everyone who already answered will get an email.`
+          ? `Added ${added.length} time${added.length === 1 ? "" : "s"}, marked yes for you.`
           : OUTCOME[json.outcome],
       );
       setPending(null);
@@ -102,17 +102,8 @@ export function StatementBox({
   }
 
   return (
-    <section aria-labelledby="say" className="space-y-4">
-      <div>
-        <h2 id="say" className="text-2xl">
-          Suggest a different time
-        </h2>
-        <p className="text-pencil">
-          Can't make the times above? Tell the organizer when you can, in your own words. You'll see what I
-          understood before anything is added.
-        </p>
-      </div>
-      <Field label="When are you free?">
+    <div className="space-y-3">
+      <Field label="Or say it in words">
         <textarea
           ref={textRef}
           rows={3}
@@ -127,7 +118,7 @@ export function StatementBox({
       </Field>
       {!pending && (
         <Button variant="quiet" type="button" onClick={read} disabled={text.trim().length < 3 || busy !== null}>
-          {busy === "reading" ? "Reading…" : "Check what I meant"}
+          {busy === "reading" ? "Reading…" : "Check it"}
         </Button>
       )}
       {error && <Notice tone="error">{error}</Notice>}
@@ -139,8 +130,7 @@ export function StatementBox({
           <p>{pending.interpretation.restatement}</p>
           {pending.interpretation.ranges.length === 0 ? (
             <p className="rounded-md bg-paper p-3 text-sm">
-              This poll only covers {datesLabel(pending.pollDates)}. You can pass this on to the organizer as a
-              note, or write times between those dates.
+              The poll only covers {datesLabel(pending.pollDates)}. Send it as a note, or edit it.
             </p>
           ) : (
             <>
@@ -170,12 +160,12 @@ export function StatementBox({
           )}
           {pending.interpretation.preferencesSummary && (
             <p className="text-sm text-pencil">
-              The organizer will see: “{pending.interpretation.preferencesSummary}”
+              Note for the organizer: “{pending.interpretation.preferencesSummary}”
             </p>
           )}
           {pending.interpretation.ambiguous.length > 0 && (
             <p className="text-sm text-pencil">
-              I wasn't sure about: {pending.interpretation.ambiguous.map((a) => `“${a}”`).join(", ")}.
+              Not sure about: {pending.interpretation.ambiguous.map((a) => `“${a}”`).join(", ")}
             </p>
           )}
           <div className="flex flex-wrap gap-3">
@@ -183,8 +173,8 @@ export function StatementBox({
               {busy === "adding"
                 ? "Saving…"
                 : pending.interpretation.ranges.length === 0
-                  ? "Pass it on as a note"
-                  : "Looks right, add these"}
+                  ? "Send as a note"
+                  : "Add these"}
             </Button>
             <Button
               variant="quiet"
@@ -194,11 +184,11 @@ export function StatementBox({
                 textRef.current?.focus();
               }}
             >
-              Correct it
+              Edit
             </Button>
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }

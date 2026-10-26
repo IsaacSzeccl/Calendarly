@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .page { fill: #faf7f0; stroke: #2a2420; }
+    .ink { stroke: #2a2420; }
+    .lines { stroke: #6e655c; }
+    .ribbon { fill: #a8452b; }
+    @media (prefers-color-scheme: dark) {
+      .page { fill: #24201c; stroke: #efe8dc; }
+      .ink { stroke: #efe8dc; }
+      .lines { stroke: #b3a99c; }
+      .ribbon { fill: #e07a55; }
+    }
+  </style>
+  <rect class="page" x="5" y="4" width="22" height="23" rx="3.5" stroke-width="2"/>
+  <path class="ink" d="M5 10h22" stroke-width="2"/>
+  <path class="ink" d="M11 2v4M21 2v4" stroke-width="2" stroke-linecap="round"/>
+  <path class="lines" d="M9 15h6M9 19h6M9 23h4" stroke-width="1.6" stroke-linecap="round"/>
+  <path class="ribbon" d="M18 10h6v20l-3-2.4-3 2.4z"/>
+</svg>
