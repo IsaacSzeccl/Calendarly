@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendarly app map</title>
+<style>
+  :root { --bg:#fbf7f0; --ink:#2b2420; --muted:#6b5f55; --line:#e3d9ca; --card:#fffdf9; --accent:#a8412f; --ok:#2f6b4f; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1d1916; --ink:#f1e9de; --muted:#b5a89a; --line:#3a312a; --card:#262019; --accent:#e0836f; --ok:#7fc4a0; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1, h2 { font-family: Georgia, serif; line-height: 1.2; }
+  h1 { font-size: 1.9rem; margin: 0 0 4px; }
+  h2 { font-size: 1.3rem; margin: 36px 0 8px; border-top: 1px solid var(--line); padding-top: 20px; }
+  p { margin: 8px 0; }
+  .muted { color: var(--muted); }
+  code { font: 0.9em ui-monospace, Menlo, monospace; background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; overflow-wrap: anywhere; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  ol.route { padding-left: 20px; }
+  ol.route li { margin: 14px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 8px 6px; vertical-align: top; }
+  details { margin: 8px 0; }
+  summary { cursor: pointer; font-weight: 600; }
+  summary:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  svg { width: 100%; height: auto; display: block; }
+  svg text { fill: var(--ink); font: 13px system-ui, sans-serif; }
+  svg .box { fill: var(--card); stroke: var(--line); stroke-width: 1.5; }
+  svg .hot { stroke: var(--accent); stroke-width: 2; }
+  svg .arrow { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+  svg .small { fill: var(--muted); font-size: 11.5px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Calendarly app map</h1>
+  <p class="muted">A take-home guide to the finished proof of concept. Snapshot of commit <code>e66f928</code> on branch <code>claude/dreamy-edison-dhiusq</code>; the code moves on, so search for the names below if a path has drifted.</p>
+
+  <h2>What the app is</h2>
+  <p>A calendar-aware group poll. An organizer describes a meeting in plain language; guests answer from a link with no account, can connect Google Calendar, or say when they are free in their own words. An AI note explains the trade-offs, and the organizer picks the time.</p>
+  <p><strong>The rule that shapes the code: code decides, the model interprets.</strong> Free time, candidate slots, the cap on AI-added times, ranking and conditional advice are plain, tested code. The model does three jobs only (read the description, read a guest's statement, write the note), and every answer must pass a schema first.</p>
+
+  <table>
+    <caption class="muted" style="text-align:left">Main pieces</caption>
+    <thead><tr><th>Piece</th><th>Where</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td>Engine</td><td><code>src/lib/engine/</code></td><td>Slots, time zones, constraints, ranking. Pure functions with unit tests.</td></tr>
+      <tr><td>AI layer</td><td><code>src/lib/ai/</code></td><td><code>complete()</code> checks output against a zod schema, retries once and logs the call; <code>parsePoll</code>, <code>parseStatement</code>, <code>explain</code>.</td></tr>
+      <tr><td>Calendars</td><td><code>src/lib/calendar/</code></td><td>One <code>CalendarProvider</code> interface with Google, sample and in-memory fake versions. Only busy start/end times are read.</td></tr>
+      <tr><td>Database</td><td><code>src/lib/db/</code>, <code>supabase/migrations/</code></td><td>Supabase Postgres, server-side access only.</td></tr>
+      <tr><td>Pages and API</td><td><code>src/app/</code></td><td><code>/new</code> (create), <code>/p/[token]</code> (guest), <code>/poll/[id]</code> (dashboard), <code>api/</code> routes.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>One action, followed through</h2>
+  <p>A guest connects a calendar and the form fills their answers. This is the path that produced the "everything shows Yes" question during review.</p>
+
+  <svg viewBox="0 0 720 150" role="img" aria-label="Calendar connection to Busy or Free label: Google free/busy, then getBusy, then the guest page marks and busyInside, then the label in the guest form">
+    <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--muted)"/></marker></defs>
+    <rect class="box" x="4" y="30" width="150" height="70" rx="8"/>
+    <text x="79" y="58" text-anchor="middle">Google free/busy</text>
+    <text class="small" x="79" y="78" text-anchor="middle">busy start/end only</text>
+    <rect class="box" x="196" y="30" width="150" height="70" rx="8"/>
+    <text x="271" y="58" text-anchor="middle">getBusy()</text>
+    <text class="small" x="271" y="78" text-anchor="middle">src/lib/calendar/google.ts</text>
+    <rect class="box hot" x="388" y="30" width="150" height="70" rx="8"/>
+    <text x="463" y="58" text-anchor="middle">Guest page</text>
+    <text class="small" x="463" y="78" text-anchor="middle">marks + busyInside()</text>
+    <rect class="box" x="580" y="30" width="136" height="70" rx="8"/>
+    <text x="648" y="58" text-anchor="middle">Label shown</text>
+    <text class="small" x="648" y="78" text-anchor="middle">"Busy 14:45–16:15…"</text>
+    <path class="arrow" d="M154 65H194" marker-end="url(#a)"/>
+    <path class="arrow" d="M346 65H386" marker-end="url(#a)"/>
+    <path class="arrow" d="M538 65H578" marker-end="url(#a)"/>
+    <text class="small" x="360" y="135" text-anchor="middle">Nothing is saved until the guest presses Save.</text>
+  </svg>
+
+  <h2>Reference route (3 stops)</h2>
+  <p class="muted">This is a reference route to read; it was not walked step by step in a session.</p>
+  <ol class="route">
+    <li><strong>Get the busy times.</strong> <code>src/lib/calendar/google.ts</code>, search <code>getBusy</code> and <code>mapFreeBusy</code>. Google's reply becomes a list of <code>{start, end}</code> intervals; titles are never read. A 60-second cache avoids asking Google twice.</li>
+    <li><strong>Turn them into answers.</strong> <code>src/app/p/[token]/page.tsx</code>, search <code>calendarMarks</code> and <code>calendarBusy</code>. A time that overlaps any busy block is pre-filled "no", otherwise "yes"; the guest's own votes always win. <code>busyInside</code> in <code>src/lib/engine/time.ts</code> trims each block to the part inside the time, so the reason can be shown.</li>
+    <li><strong>Show the reason.</strong> <code>src/app/p/[token]/GuestForm.tsx</code>, search <code>on your calendar</code>. The label says "Busy 14:45–16:15 on your calendar" or "Free on your calendar", in the time zone the guest chose with the picker (<code>src/components/ZonePicker.tsx</code>).</li>
+  </ol>
+
+  <h2>To change this, start here</h2>
+  <table>
+    <tbody>
+      <tr><td>The wording of a screen</td><td><code>src/app/p/[token]/GuestForm.tsx</code>, <code>src/app/new/CreatePoll.tsx</code></td></tr>
+      <tr><td>How times are ranked and labeled</td><td><code>src/lib/engine/rank.ts</code>; the weights live in <code>src/lib/config.ts</code></td></tr>
+      <tr><td>Which times are offered at all</td><td><code>src/lib/engine/slots.ts</code>: <code>buildCandidatePool</code>, <code>chooseInitialOptions</code>, <code>addAiSlots</code></td></tr>
+      <tr><td>What the AI is asked or allowed to say</td><td><code>src/lib/ai/schemas.ts</code>, <code>src/lib/ai/explain.ts</code></td></tr>
+      <tr><td>A new calendar source</td><td>Implement <code>CalendarProvider</code> in <code>src/lib/calendar/provider.ts</code></td></tr>
+      <tr><td>The database shape</td><td>Add a file under <code>supabase/migrations/</code>, then regenerate <code>src/lib/db/database.types.ts</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>A practice to reuse</h2>
+  <div class="card">
+    <p><strong>When the app looks wrong, check the data against its source before changing code.</strong></p>
+    <p>A reviewer reported that the calendar-filled answers were all "Yes". Rather than adjusting the logic, the free/busy data was compared with Google directly using <code>scripts/diag-busy.ts</code>. The data was right: the calendar being compared was displayed in a different time zone from the poll. The fix was to make the app explain itself (<code>busyInside</code> and the zone picker), pinned by the <code>busyInside</code> tests in <code>tests/unit/slots.test.ts</code>.</p>
+    <p>On another project, the same approach applies: write a tiny script that prints the raw input and output of the suspicious step, so a "bug" can be told apart from a display problem before any logic changes.</p>
+  </div>
+
+  <h2>Run it again</h2>
+  <details open>
+    <summary>Commands</summary>
+    <p>Needs Node 22 and a <code>.env</code> (copy the names from <code>.env.example</code>).</p>
+    <p><code>npm install</code> · <code>npm run check:env</code> · <code>npm run dev</code> → http://localhost:3000</p>
+    <p><code>npm test</code> runs the unit tests (70 at this snapshot). <code>npm run test:e2e</code> runs the demo path in a browser. <code>E2E_TEST_MODE=1 npm run dev</code> adds a test sign-in and sample calendars; never set it in production.</p>
+  </details>
+  <details>
+    <summary>Deploying</summary>
+    <p>The Vercel project needs the same environment variable names as <code>.env</code> (Supabase, Google, AI, Brevo, <code>APP_URL</code>). Environment variables are not copied from your machine; add them in the Vercel project settings, then redeploy. Add the live address to the Google OAuth redirect URIs and Supabase's redirect URLs.</p>
+  </details>
+</main>
+</body>
+</html>

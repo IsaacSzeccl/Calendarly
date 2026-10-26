@@ -69,7 +69,7 @@ Build mode: fast. The learner asked for an unattended build ("continue building 
   Learner check: Run the demo seed, open the dashboard, and judge whether the "no perfect slot" story reads clearly in under a minute.
   Commit: `Demo scenario, warm-planner design and demo-path test`
 
-- [ ] **7. Live on Vercel**
+- [x] **7. Live on Vercel**
   Becomes usable: The app deployed on Vercel at a stable URL with its environment variables, so others can try it.
   Why now: Deployment is last for the core because it needs every secret in Vercel and the Google redirect URIs for the live address.
   PRD ref: `prd.md > Demo and Success Criteria`
@@ -98,40 +98,40 @@ Build mode: fast. The learner asked for an unattended build ("continue building 
 
 Feedback from the learner's first hands-on session (fixed, verified by the agent; each waits for the learner to retry it):
 
-- [ ] Make the best options more apparent — the top time is highlighted ("Best time", or "Closest fit" when no time suits everyone); on wide screens the ranking and the AI note sit side by side so the best time is visible without scrolling. Fixing it exposed a ranking bug: a late-added time with one "yes" and four blanks outranked one with four "yes" and one "no"; blanks now count as unknown (half a "no").
-- [ ] "Check what I meant" said "I couldn't read that" for "I am less free this week. Prefer a meeting next week." — the model had understood it but named no times inside the poll. Code now gives the model the calendar weeks ("next week" from a Sunday starts tomorrow), vague periods become 09:00–18:00 the guest can correct, and words with no times in the poll can be passed on as a note instead of failing.
-- [ ] "None of these work?" was ambiguous — now "Suggest a different time", with "Can't make the times above? Tell the organizer when you can, in your own words."
-- [ ] CI failed after the push (`Cannot find name 'PageProps'`) — the typecheck now runs `next typegen` first, reproduced and fixed in a clean checkout.
-- [ ] Google "Access blocked: has not completed the verification process" — the OAuth app is in Testing mode; the learner's account must be added as a test user in Google Cloud (learner step).
-- [ ] "Cannot see full screen on computer" — the screenshot was the agent's Playwright test browser, left at phone width (412 px); the app itself fills a desktop window. The dashboard now also uses the extra width.
-- [ ] Better incentives to connect calendars — the calendar card now sits above the times and says what connecting does (fills every answer, suggests times that fit both calendars, gives a truer picture, lets your calendar answer next time); it shows how many others connected.
-- [ ] A connected calendar also suggests new times (learner's answer to question 3) — free for the guest and the organizer, favouring times other connected guests are free, one tap to add, sharing the cap of 3 guest-added times.
-- [ ] Slice 8, meet again, built (learner request).
+- [x] Make the best options more apparent — the top time is highlighted ("Best time", or "Closest fit" when no time suits everyone); on wide screens the ranking and the AI note sit side by side so the best time is visible without scrolling. Fixing it exposed a ranking bug: a late-added time with one "yes" and four blanks outranked one with four "yes" and one "no"; blanks now count as unknown (half a "no").
+- [x] "Check what I meant" said "I couldn't read that" for "I am less free this week. Prefer a meeting next week." — the model had understood it but named no times inside the poll. Code now gives the model the calendar weeks ("next week" from a Sunday starts tomorrow), vague periods become 09:00–18:00 the guest can correct, and words with no times in the poll can be passed on as a note instead of failing.
+- [x] "None of these work?" was ambiguous — now "Suggest a different time", with "Can't make the times above? Tell the organizer when you can, in your own words."
+- [x] CI failed after the push (`Cannot find name 'PageProps'`) — the typecheck now runs `next typegen` first, reproduced and fixed in a clean checkout.
+- [x] Google "Access blocked: has not completed the verification process" — the OAuth app is in Testing mode; the learner's account must be added as a test user in Google Cloud (learner step).
+- [x] "Cannot see full screen on computer" — the screenshot was the agent's Playwright test browser, left at phone width (412 px); the app itself fills a desktop window. The dashboard now also uses the extra width.
+- [x] Better incentives to connect calendars — the calendar card now sits above the times and says what connecting does (fills every answer, suggests times that fit both calendars, gives a truer picture, lets your calendar answer next time); it shows how many others connected.
+- [x] A connected calendar also suggests new times (learner's answer to question 3) — free for the guest and the organizer, favouring times other connected guests are free, one tap to add, sharing the cap of 3 guest-added times.
+- [x] Slice 8, meet again, built (learner request).
 Feedback from the learner's second session (`user_feedback/Calendarly-changes-v0.2.docx`; fixed and verified by the agent, each waiting for the learner to retry):
 
-- [ ] "Date.now() while prerendering" error on the guest page with a sample calendar — the page shell is prerendered with the visitor's cookies, and the guest page and dashboard read the clock during it; both now call `connection()` first (Next 16's documented fix).
-- [ ] Let guests add a time to the poll themselves — "Suggest a time" now has a day and time picker; it lists only times the organizer is free, the rules allow and nothing clashes with, and the add route checks again.
-- [ ] Shorter AI note — the prompt asks for one or two sentences (35 words at most) with short per-option fragments, and the schema caps the lengths; repeated per-option lines are shown once.
-- [ ] Less wordy, cleaner site — copy cut on every screen; the dashboard merges "Everyone's answers" and "People" into one Answers table; a poll with no answers shows the share link and its times instead of an empty ranking; rarely needed poll settings sit under "More options".
-- [ ] Logo and brand identity — a diary page with the brick-red ribbon marker (the same ribbon that marks the AI note); used in the header, browser tab icon, home-screen icon, link-preview image and email header.
-- [ ] Create page: one button, then straight to the dashboard — the times now update on their own after an edit, so "Update the times" is gone; "Create poll" opens the new poll's dashboard with the link to share.
+- [x] "Date.now() while prerendering" error on the guest page with a sample calendar — the page shell is prerendered with the visitor's cookies, and the guest page and dashboard read the clock during it; both now call `connection()` first (Next 16's documented fix).
+- [x] Let guests add a time to the poll themselves — "Suggest a time" now has a day and time picker; it lists only times the organizer is free, the rules allow and nothing clashes with, and the add route checks again.
+- [x] Shorter AI note — the prompt asks for one or two sentences (35 words at most) with short per-option fragments, and the schema caps the lengths; repeated per-option lines are shown once.
+- [x] Less wordy, cleaner site — copy cut on every screen; the dashboard merges "Everyone's answers" and "People" into one Answers table; a poll with no answers shows the share link and its times instead of an empty ranking; rarely needed poll settings sit under "More options".
+- [x] Logo and brand identity — a diary page with the brick-red ribbon marker (the same ribbon that marks the AI note); used in the header, browser tab icon, home-screen icon, link-preview image and email header.
+- [x] Create page: one button, then straight to the dashboard — the times now update on their own after an edit, so "Update the times" is gone; "Create poll" opens the new poll's dashboard with the link to share.
 Feedback from the learner's third session (`user_feedback/Calendarly-changes-v0.3.docx`; fixed by the agent, each waiting for the learner to retry):
 
-- [ ] "Critical error: the calendar only shows all yes" — checked against Google itself with the learner's own connected calendar (`scripts/diag-busy.ts`): free/busy is correct and matches the calendar picture once converted. The picture shows the calendar in US Eastern time, 12 hours behind the poll's Hong Kong times, so e.g. Wed 14:45–16:45 Hong Kong is Wed 02:45–04:45 Eastern, which really is free. Nothing was wrong with the data; the app just gave no way to see that. Each calendar-filled answer now says why ("Busy 14:45–16:15 on your calendar" / "Free on your calendar"), and the guest can choose the timezone the times are shown in to match their calendar. Unit tests pin that answers are exact instants whatever zone they are shown in.
-- [ ] "Votes should not be saved when the calendar is connected — only when Save my changes is clicked" — connecting a calendar, adding a time or checking a statement now saves only who the guest is (so the calendar has an owner), never their answers, and the guest doesn't count as answered (dashboard, "X of Y", emails) until they press Send / Save (`guests.submitted_at`, migration `20261026000000_guest_submitted.sql`). A "Not sent yet" reminder shows until they do.
-- [ ] Final review complete — feedback resolved and learner confirms ready to ship
+- [x] "Critical error: the calendar only shows all yes" — checked against Google itself with the learner's own connected calendar (`scripts/diag-busy.ts`): free/busy is correct and matches the calendar picture once converted. The picture shows the calendar in US Eastern time, 12 hours behind the poll's Hong Kong times, so e.g. Wed 14:45–16:45 Hong Kong is Wed 02:45–04:45 Eastern, which really is free. Nothing was wrong with the data; the app just gave no way to see that. Each calendar-filled answer now says why ("Busy 14:45–16:15 on your calendar" / "Free on your calendar"), and the guest can choose the timezone the times are shown in to match their calendar. Unit tests pin that answers are exact instants whatever zone they are shown in.
+- [x] "Votes should not be saved when the calendar is connected — only when Save my changes is clicked" — connecting a calendar, adding a time or checking a statement now saves only who the guest is (so the calendar has an owner), never their answers, and the guest doesn't count as answered (dashboard, "X of Y", emails) until they press Send / Save (`guests.submitted_at`, migration `20261026000000_guest_submitted.sql`). A "Not sent yet" reminder shows until they do.
+- [x] Final review complete — feedback resolved and learner confirms ready to ship
 
 ## Code Tour and App Map
 
-- [ ] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
-- [ ] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
-- [ ] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
+- [x] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
+- [x] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
+- [x] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
 
-Activity and evidence: not started
-Route and stops: not started
-Edit outcome: not started
-Reflection: not started
-Activity mode: not started
+Activity and evidence: focused alternative (the learner is an experienced plan-first user). Anchored on the v0.3 "calendar only shows all yes" investigation: the free/busy data was compared with Google directly (`scripts/diag-busy.ts`), which showed the data was right and the calendar was displayed in a different time zone; the fix (`busyInside`, the zone picker) is pinned by the `busyInside` tests in `tests/unit/slots.test.ts`. Unit tests: 70 passing at commit e66f928.
+Route and stops: reference route written in `devpost/app-map.html` (`getBusy` in `src/lib/calendar/google.ts` → `calendarMarks`/`calendarBusy` in `src/app/p/[token]/page.tsx` → the "on your calendar" label in `GuestForm.tsx`). It was not walked step by step in a session.
+Edit outcome: offered at hand-off; no edit made.
+Reflection: offered at hand-off; not yet answered. The learner's answer, if any, goes in the ignored learner profile.
+Activity mode: recap with a reference route (not hands-on practice). App map: `devpost/app-map.html`, generated from commit e66f928.
 
 ## Revisions
 
@@ -173,3 +173,4 @@ Activity mode: not started
 - An independent review of the second round found one high and six medium issues; fixed and re-checked: the create page tracks which version of the details its times belong to, so an edit made while the times refresh can't be dropped and Create only works when the times on screen match the details (it also can't double-submit); a failed refresh says so and offers "Try again", an incomplete draft says what's missing instead of refreshing, and people can be removed; a re-read cancels a pending refresh; a poll with no answers still has Pick buttons and status-aware text; the organizer's "Disconnect calendar" asks first and reports failures; the picker stays mounted so its message survives the poll filling up, and it says when the organizer's calendar can't be checked; a unit test checks every offered time is accepted by the add route. Smaller: names next to each "no" count, timezones in the answers table, the "Prefer not" hint is back for guests answering by hand, `metadataBase` falls back to Vercel's address, copying the link falls back to selecting it, one shared `listNames`. Not done (low): route-level tests for `/api/guest/add-time`, a `/favicon.ico` for old browsers, and a database guard against two guests adding overlapping times at the same moment.
 - Third feedback round: counting a guest as answered now needs an explicit Save (reversing the earlier behaviour where connecting a calendar answered for the guest immediately and the dashboard read their live calendar). Guests created by other paths (demo seed, meet again) default to answered. The timezone picker uses a fixed list of common zones so server and browser render the same options.
 
+- Slice 7 and Final Review closed on the learner's word: they report the app is deployed on Vercel and working, and that all feedback items are resolved and the proof of concept is ready to ship. When the agent last inspected the Vercel project, no environment variables were set and `/auth/sign-in` was failing at runtime; the agent has not re-checked the live site since the learner added them.
