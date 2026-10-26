@@ -268,3 +268,34 @@ describe("isComplete and basisText", () => {
     );
   });
 });
+
+// The learner's calendar, as Google reports it, is shown in US Eastern time while the poll is in Hong Kong.
+// Free/busy is exact instants, so the same wall-clock hour means different things in the two zones.
+describe("a guest's calendar answers in absolute time, whatever zone it is displayed in", () => {
+  const HK = "Asia/Hong_Kong";
+  const NY = "America/New_York";
+  const at = (iso: string, zone: string) => DateTime.fromISO(iso, { zone }).toMillis();
+  // "Stuff 2:30–4:15pm" on Wed 28 Oct in the learner's Eastern-time calendar.
+  const busy = [{ start: at("2026-10-28T14:30", NY), end: at("2026-10-28T16:15", NY) }];
+  const slot = (iso: string, zone: string): SlotOption => ({
+    id: "s",
+    start: at(iso, zone),
+    end: at(iso, zone) + 2 * 3_600_000,
+    source: "organizer_free",
+  });
+  const respondent = guest("Leo", {}, { busy });
+
+  it("is a No for 14:45–16:45 on the calendar's own clock (Eastern)", () => {
+    expect(statusFor(respondent, slot("2026-10-28T14:45", NY))).toBe("no");
+  });
+
+  it("is a Yes for 14:45–16:45 Hong Kong time, which is the middle of the night on that calendar", () => {
+    expect(statusFor(respondent, slot("2026-10-28T14:45", HK))).toBe("yes");
+  });
+
+  it("is a No for the same instants however they are written", () => {
+    const eastern = slot("2026-10-28T14:45", NY);
+    const sameInstantInHk = { ...eastern, start: DateTime.fromMillis(eastern.start, { zone: HK }).toMillis() };
+    expect(statusFor(respondent, sameInstantInHk)).toBe("no");
+  });
+});

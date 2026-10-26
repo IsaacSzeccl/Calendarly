@@ -114,3 +114,11 @@ export function dailyBlocks(
 export function isValidZone(zone: string): boolean {
   return DateTime.local().setZone(zone).isValid;
 }
+
+/** The parts of the busy blocks that fall inside the slot, so "why is this a No?" has an exact answer. */
+export function busyInside(busy: Interval[], slot: Interval): Interval[] {
+  return busy
+    .filter((b) => overlaps(b, slot))
+    .map((b) => ({ start: Math.max(b.start, slot.start), end: Math.min(b.end, slot.end) }))
+    .sort((a, b) => a.start - b.start);
+}

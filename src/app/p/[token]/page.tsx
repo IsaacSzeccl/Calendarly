@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { getGuestByToken, getGuests, getOptions, getPollByToken, getVotes, statusOf } from "@/lib/db/polls";
-import { overlaps } from "@/lib/engine/time";
+import { busyInside, overlaps } from "@/lib/engine/time";
 import { testModeOn } from "@/lib/auth/organizer";
 import { config } from "@/lib/config";
 import { readGuestToken } from "@/lib/guest/cookie";
@@ -62,6 +62,16 @@ async function GuestPoll({
   const room = config.guestSlotCap - options.filter((o) => o.source !== "organizer_free").length;
   const pickable = statusOf(poll) === "open" && room > 0 ? await pickableStarts(poll, options, requestTime()) : [];
 
+  // Why each calendar-filled "No" is a No: the busy blocks inside that time, so the guest can check it.
+  const calendarBusy =
+    calendar.state === "connected"
+      ? Object.fromEntries(
+          options
+            .map((o) => [o.id, busyInside(calendar.busy, o)] as const)
+            .filter(([, blocks]) => blocks.length > 0),
+        )
+      : {};
+
   const claimed = new Set(guests.filter((g) => g.id !== me?.id).map((g) => g.name.toLowerCase()));
   const finalOption = options.find((o) => o.id === poll.finalOptionId) ?? null;
 
@@ -76,11 +86,14 @@ async function GuestPoll({
     listedNames: poll.rules.people.map((p) => p.name).filter((n) => !claimed.has(n.toLowerCase())),
     options: options.map(({ id, start, end, source }) => ({ id, start, end, source })),
     finalOption: finalOption ? { start: finalOption.start, end: finalOption.end } : null,
-    me: me ? { name: me.name, email: me.email, timezone: me.timezone, votes: myVotes, remember: me.remember } : null,
+    me: me
+      ? { name: me.name, email: me.email, timezone: me.timezone, votes: myVotes, remember: me.remember, submitted: me.submitted }
+      : null,
     calendar: {
       state: calendar.state,
       sample: calendar.state === "connected" && calendar.sample,
       marks: calendarMarks,
+      busy: calendarBusy,
       suggestions:
         suggest?.state === "suggested"
           ? suggest.suggestions.map(({ start, end }) => ({ start, end }))
@@ -88,7 +101,7 @@ async function GuestPoll({
             ? "full"
             : null,
     },
-    othersConnected: guests.filter((g) => g.id !== me?.id && g.calendarConnectionId).length,
+    othersConnected: guests.filter((g) => g.id !== me?.id && g.submitted && g.calendarConnectionId).length,
     testMode: testModeOn(),
     room,
     pickable,

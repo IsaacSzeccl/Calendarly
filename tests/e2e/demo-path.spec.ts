@@ -56,6 +56,10 @@ test("organizer creates, guests answer, organizer picks", async ({ page, browser
   await priya.getByRole("button", { name: "Add these" }).click();
   await expect(priya.getByText(/Added \d times?, marked yes/)).toBeVisible();
   await expect(priya.getByText("Suggested").first()).toBeVisible();
+  // Adding times doesn't send anything: only the button counts her as answered.
+  await expect(priya.getByText("Not sent yet")).toBeVisible();
+  await priya.getByRole("button", { name: "Send my answers" }).click();
+  await expect(priya.getByText("Saved, thanks Priya.")).toBeVisible();
 
   // Organizer sees everyone, the note with its basis, and picks the top time.
   await page.reload();
@@ -90,7 +94,9 @@ test("a guest's calendar answers, suggests a time, and brings them to the next m
   await mei.getByLabel("Email").fill("mei@example.com");
   await mei.getByRole("button", { name: "Use a sample calendar (test mode)" }).click();
   await expect(mei.getByRole("heading", { name: "Your calendar is answering" })).toBeVisible();
-  await expect(mei.getByText("From your calendar").first()).toBeVisible();
+  // Each calendar-filled answer says why: busy at which time, or free.
+  await expect(mei.getByText(/Busy \d\d:\d\d–\d\d:\d\d on your calendar/).first()).toBeVisible();
+  await expect(mei.getByText("Not sent yet")).toBeVisible();
 
   // It offers a new time that fits her and the organizer; adding it marks her yes.
   await expect(mei.getByRole("heading", { name: "More times that suit you" })).toBeVisible();
@@ -102,10 +108,20 @@ test("a guest's calendar answers, suggests a time, and brings them to the next m
   await mei.getByRole("button", { name: "Add this time" }).click();
   await expect(mei.getByText("Your time was added and marked yes.")).toBeVisible();
 
+  // Connecting a calendar and adding times answered nothing: only the organizer counts (1 of 3).
+  await page.reload();
+  await expect(page.getByText("1 of 3")).toBeVisible();
+
   // She asks to be remembered for this organizer's next meeting.
   const saved = mei.waitForResponse((r) => r.url().includes("/api/guest/remember") && r.ok());
   await mei.getByLabel(/Remember me for Alex's next meetings/).check();
   await saved;
+
+  // Only the button sends her answers.
+  await mei.getByRole("button", { name: "Send my answers" }).click();
+  await expect(mei.getByText("Saved, thanks Mei.")).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("2 of 3")).toBeVisible();
 
   // The organizer meets the group again: Mei comes along and her calendar answers for her.
   await page.reload();

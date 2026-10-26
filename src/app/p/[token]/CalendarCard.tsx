@@ -10,6 +10,8 @@ export type CalendarState = {
   state: "connected" | "needs_reconnect" | "none";
   sample: boolean;
   marks: Record<string, "yes" | "no">;
+  /** The busy blocks inside each time marked "no", for showing why. */
+  busy: Record<string, { start: number; end: number }[]>;
   /** New times that fit this guest's calendar and the organizer's; "full" when the poll can't take more. */
   suggestions: { start: number; end: number }[] | "full" | null;
 };
@@ -35,6 +37,7 @@ export function CalendarCard({
   othersConnected,
   testMode,
   remember: savedRemember,
+  submitted,
   ensureSaved,
   onAdded,
 }: {
@@ -47,6 +50,8 @@ export function CalendarCard({
   testMode: boolean;
   /** "Remember me for future meetings with this organizer", as saved. */
   remember: boolean;
+  /** Has the guest pressed Send / Save yet? Until then nothing from the calendar counts. */
+  submitted: boolean;
   ensureSaved: () => Promise<boolean>;
   onAdded: (added: { id: string; start: number; end: number }) => void;
 }) {
@@ -127,6 +132,7 @@ export function CalendarCard({
             </h2>
             <p className="text-sm text-pencil">
               {calendar.sample ? "Sample calendar (test mode). " : ""}Only free or busy is read.
+              {!submitted && " Nothing is sent until you press the button below."}
             </p>
           </div>
           <Button variant="plain" type="button" disabled={busy !== null} onClick={disconnect}>

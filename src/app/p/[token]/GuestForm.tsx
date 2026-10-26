@@ -3,12 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore } from "react";
 import type { Choice, OptionSource } from "@/lib/engine/types";
-import { slotLabel, zoneShort } from "@/lib/format";
+import { slotLabel, timeRange } from "@/lib/format";
 import { ChoicePicker, StatusMark } from "@/components/Availability";
 import { SlotList } from "@/components/SlotList";
 import { Button, Field, Notice, inputClass } from "@/components/ui";
 import { CalendarCard, type CalendarState } from "./CalendarCard";
 import { PickTime } from "./PickTime";
+import { ZonePicker } from "@/components/ZonePicker";
 import { StatementBox } from "./StatementBox";
 
 export type GuestFormProps = {
@@ -22,7 +23,15 @@ export type GuestFormProps = {
   listedNames: string[];
   options: { id: string; start: number; end: number; source: OptionSource }[];
   finalOption: { start: number; end: number } | null;
-  me: { name: string; email: string; timezone: string; votes: Record<string, Choice>; remember: boolean } | null;
+  me: {
+    name: string;
+    email: string;
+    timezone: string;
+    votes: Record<string, Choice>;
+    remember: boolean;
+    /** Pressed Send / Save at least once. */
+    submitted: boolean;
+  } | null;
   calendar: CalendarState;
   calendarResult: string | null;
   /** Other guests who connected a calendar: a nudge, never who they are. */
@@ -42,7 +51,10 @@ function useBrowserZone(fallback: string): string {
 }
 
 export function GuestForm(props: GuestFormProps) {
-  const zone = useBrowserZone(props.me?.timezone ?? props.organizerTimezone);
+  const browserZone = useBrowserZone(props.me?.timezone ?? props.organizerTimezone);
+  // The guest can show times in another zone, e.g. the one their calendar uses, to check them side by side.
+  const [pickedZone, setPickedZone] = useState<string | null>(null);
+  const zone = pickedZone ?? browserZone;
   const [name, setName] = useState(props.me?.name ?? "");
   const [email, setEmail] = useState(props.me?.email ?? "");
   // Calendar marks fill the gaps; anything the guest chose themselves wins.
@@ -65,8 +77,12 @@ export function GuestForm(props: GuestFormProps) {
     await save();
   }
 
-  /** Save the current answers. Returns false (and shows why) if they can't be saved yet. */
-  async function save(): Promise<boolean> {
+  /**
+   * Post the form. With `submit` (the Save / Send button) the answers are stored and count; without it only
+   * who the guest is is stored, so a calendar can be connected or a time added with nothing counted yet.
+   * Returns false (and shows why) if it can't be saved.
+   */
+  async function post(submit: boolean): Promise<boolean> {
     if (formRef.current && !formRef.current.reportValidity()) return false;
     setSaving(true);
     setError(null);
@@ -74,11 +90,11 @@ export function GuestForm(props: GuestFormProps) {
       const res = await fetch("/api/guest/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: props.token, name, email, timezone: zone, votes }),
+        body: JSON.stringify({ token: props.token, name, email, timezone: zone, votes: submit ? votes : {}, submit }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Your answers weren't saved. Try again.");
-      setSaved(json.name);
+      if (submit) setSaved(json.name);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Your answers weren't saved. Try again.");
@@ -88,6 +104,9 @@ export function GuestForm(props: GuestFormProps) {
     }
   }
 
+  const save = () => post(true);
+  const saveIdentity = () => post(false);
+
   const length =
     props.durationMinutes % 60 === 0 ? `${props.durationMinutes / 60}-hour` : `${props.durationMinutes}-minute`;
 
@@ -96,8 +115,16 @@ export function GuestForm(props: GuestFormProps) {
       <header className="space-y-2">
         <h1 className="text-4xl">{props.title}</h1>
         <p className="text-pencil">
-          {props.organizerName} is finding a time for a {length} meeting. Times in {zoneShort(zone)}.
+          {props.organizerName} is finding a time for a {length} meeting.
         </p>
+        <div className="space-y-1">
+          <ZonePicker zone={zone} also={[props.organizerTimezone]} onChange={setPickedZone} />
+          {props.calendar.state === "connected" && (
+            <p className="text-sm text-pencil">
+              Google Calendar may show another timezone. Pick the one your calendar shows to compare times.
+            </p>
+          )}
+        </div>
       </header>
 
       {props.status === "finalized" && props.finalOption && (
@@ -169,7 +196,8 @@ export function GuestForm(props: GuestFormProps) {
           othersConnected={props.othersConnected}
           testMode={props.testMode}
           remember={props.me?.remember ?? false}
-          ensureSaved={save}
+          submitted={props.me?.submitted ?? false}
+          ensureSaved={saveIdentity}
           onAdded={(added) => setVotes((v) => ({ ...v, [added.id]: "yes" }))}
         />
       )}
@@ -195,7 +223,13 @@ export function GuestForm(props: GuestFormProps) {
               <div className="flex flex-wrap items-center gap-2">
                 {slot.source !== "organizer_free" && <span className="text-sm text-pencil">Suggested</span>}
                 {props.calendar.marks[slot.id!] && !touched.has(slot.id!) && (
-                  <span className="text-sm text-pencil">From your calendar</span>
+                  <span className="text-sm text-pencil">
+                    {props.calendar.marks[slot.id!] === "no"
+                      ? `Busy ${(props.calendar.busy[slot.id!] ?? [])
+                          .map((b) => timeRange(b.start, b.end, zone))
+                          .join(", ")} on your calendar`
+                      : "Free on your calendar"}
+                  </span>
                 )}
                 <ChoicePicker
                   label={`Your answer for ${slotLabel(slot.start, slot.end, zone)}`}
@@ -223,7 +257,7 @@ export function GuestForm(props: GuestFormProps) {
             starts={props.pickable}
             room={props.room}
             durationMinutes={props.durationMinutes}
-            ensureSaved={save}
+            ensureSaved={saveIdentity}
             onAdded={(added) => {
               setVotes((v) => ({ ...v, [added.id]: "yes" }));
               router.refresh();
@@ -232,7 +266,7 @@ export function GuestForm(props: GuestFormProps) {
           <StatementBox
             token={props.token}
             zone={zone}
-            ensureSaved={save}
+            ensureSaved={saveIdentity}
             onAdded={(added) => {
               setVotes((v) => ({ ...v, ...Object.fromEntries(added.map((o) => [o.id, "yes" as const])) }));
               router.refresh();
@@ -249,8 +283,11 @@ export function GuestForm(props: GuestFormProps) {
               Saved, thanks {saved}. You can change your answers here until {props.organizerName} picks a time.
             </Notice>
           )}
+          {!saved && props.me && !props.me.submitted && (
+            <p className="text-pencil">Not sent yet. Press the button to send your answers.</p>
+          )}
           <Button type="submit" disabled={saving}>
-            {saving ? "Saving…" : props.me || saved ? "Save my changes" : "Send my answers"}
+            {saving ? "Saving…" : props.me?.submitted || saved ? "Save my changes" : "Send my answers"}
           </Button>
         </div>
       )}

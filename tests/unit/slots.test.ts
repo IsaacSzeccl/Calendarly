@@ -9,7 +9,7 @@ import {
   rulePenalties,
   ruleScore,
 } from "@/lib/engine/slots";
-import { insideClock, localWeekday, overlapsClock } from "@/lib/engine/time";
+import { busyInside, insideClock, localWeekday, overlapsClock } from "@/lib/engine/time";
 import type { PollRules, SlotOption } from "@/lib/engine/types";
 
 const NY = "America/New_York";
@@ -310,5 +310,28 @@ describe("insideClock", () => {
     const late = { start: at("2026-10-26T22:00"), end: at("2026-10-26T23:00") };
     expect(insideClock(late, { start: "21:00", end: "06:00" }, NY)).toBe(true);
     expect(insideClock(late, { start: "08:00", end: "21:00" }, NY)).toBe(false);
+  });
+});
+
+describe("busyInside (why a calendar-filled answer is a No)", () => {
+  const slot = { start: at("2026-10-28T14:45"), end: at("2026-10-28T16:45") };
+
+  it("returns only the part of each busy block that falls inside the time", () => {
+    const busy = [
+      { start: at("2026-10-28T14:30"), end: at("2026-10-28T16:15") },
+      { start: at("2026-10-28T16:30"), end: at("2026-10-28T18:00") },
+    ];
+    expect(busyInside(busy, slot)).toEqual([
+      { start: at("2026-10-28T14:45"), end: at("2026-10-28T16:15") },
+      { start: at("2026-10-28T16:30"), end: at("2026-10-28T16:45") },
+    ]);
+  });
+
+  it("ignores blocks that only touch the time", () => {
+    const busy = [
+      { start: at("2026-10-28T13:00"), end: at("2026-10-28T14:45") },
+      { start: at("2026-10-28T16:45"), end: at("2026-10-28T17:30") },
+    ];
+    expect(busyInside(busy, slot)).toEqual([]);
   });
 });
