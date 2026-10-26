@@ -40,7 +40,7 @@ export type Dashboard = {
 
 /** Load everything for one poll and rank it. Rankings are recomputed on every load, never stored. */
 export async function loadDashboard(poll: Poll): Promise<Dashboard> {
-  const [options, guests] = await Promise.all([getOptions(poll.id), getGuests(poll.id)]);
+  const [options, guests] = await Promise.all([getOptions(poll.id), getGuests(poll.id, true)]);
   const [votes, statements, failed] = await Promise.all([
     getVotes(options.map((o) => o.id)),
     db().from("statements").select("guest_id").eq("poll_id", poll.id).eq("confirmed", true),

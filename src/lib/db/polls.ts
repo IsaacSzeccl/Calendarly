@@ -38,6 +38,8 @@ export type Guest = {
   remember: boolean;
   /** Single-use code for the guest's private link, while one is outstanding. */
   claimToken: string | null;
+  /** Pressed Save / Send. Until then the guest only exists so a calendar can be attached. */
+  submitted: boolean;
   /** A seeded demo guest with made-up answers. */
   isSample: boolean;
 };
@@ -93,6 +95,7 @@ function toGuest(r: Row<"guests">): Guest {
     calendarConnectionId: r.calendar_connection_id,
     remember: r.remember,
     claimToken: r.claim_token,
+    submitted: r.submitted_at !== null,
     isSample: r.is_sample,
   };
 }
@@ -219,12 +222,14 @@ export async function getOptions(pollId: string): Promise<SlotOption[]> {
   return rows.map(toOption);
 }
 
-export async function getGuests(pollId: string): Promise<Guest[]> {
+/** Everyone on the poll, or with `answeredOnly` just those who pressed Save / Send. */
+export async function getGuests(pollId: string, answeredOnly = false): Promise<Guest[]> {
   const rows = must(
     await db().from("guests").select().eq("poll_id", pollId).order("created_at"),
     "load guests",
   );
-  return rows.map(toGuest);
+  const guests = rows.map(toGuest);
+  return answeredOnly ? guests.filter((g) => g.submitted) : guests;
 }
 
 export async function getGuestByToken(pollId: string, guestToken: string): Promise<Guest | null> {
@@ -253,8 +258,12 @@ export async function getVotes(optionIds: string[]): Promise<Vote[]> {
 export class EmailTakenError extends Error {}
 
 /**
- * Save a guest's answers. Only the private cookie identifies a returning guest:
- * an email alone never unlocks someone else's answers or calendar.
+ * Save a guest. Only the private cookie identifies a returning guest: an email
+ * alone never unlocks someone else's answers or calendar.
+ *
+ * With `submit` (the Save / Send button) the answers are stored and the guest
+ * counts as answered. Without it only who they are is stored, so a calendar can
+ * be attached or a time added, and nothing counts yet.
  */
 export async function saveResponse(input: {
   pollId: string;
@@ -263,26 +272,39 @@ export async function saveResponse(input: {
   email: string;
   timezone: string;
   votes: Record<string, Choice>;
+  submit: boolean;
 }): Promise<Guest> {
   const existing = input.guestToken ? await getGuestByToken(input.pollId, input.guestToken) : null;
   const fields = { name: input.name, email: input.email, timezone: input.timezone };
+  const now = new Date().toISOString();
   const result = existing
     ? await db()
         .from("guests")
-        .update({ ...fields, updated_at: new Date().toISOString() })
+        .update({
+          ...fields,
+          updated_at: now,
+          // The first Save is when they became an answer; later saves keep that moment.
+          ...(input.submit && !existing.submitted ? { submitted_at: now } : {}),
+        })
         .eq("id", existing.id)
         .select()
         .single()
     : await db()
         .from("guests")
-        .insert({ ...fields, poll_id: input.pollId, guest_token: newToken() })
+        .insert({
+          ...fields,
+          poll_id: input.pollId,
+          guest_token: newToken(),
+          submitted_at: input.submit ? now : null,
+        })
         .select()
         .single();
   // guests_poll_email_idx: one answer per email per poll.
   if (result.error?.code === "23505") throw new EmailTakenError();
   const guest = toGuest(must(result, existing ? "update guest" : "add guest"));
 
-  const entries = Object.entries(input.votes);
+  // Answers are only stored on an explicit Save: the form may be showing a calendar's prefilled marks.
+  const entries = input.submit ? Object.entries(input.votes) : [];
   if (entries.length) {
     ok(
       await db()
@@ -381,6 +403,7 @@ export async function copyGuestInto(pollId: string, g: Guest): Promise<Guest> {
           timezone: g.timezone,
           guest_token: newToken(),
           claim_token: newToken(),
+          submitted_at: new Date().toISOString(),
           calendar_connection_id: g.calendarConnectionId,
           remember: true,
         })

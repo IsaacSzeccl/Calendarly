@@ -27,7 +27,7 @@ export async function suggestFromCalendar(poll: Poll, guest: Guest, now: number 
   const [mine, options, guests] = await Promise.all([
     guestBusyBetween(guest.calendarConnectionId, range, guest.timezone),
     getOptions(poll.id),
-    getGuests(poll.id),
+    getGuests(poll.id, true),
   ]);
   if (mine.state !== "connected") return { state: mine.state === "none" ? "not_connected" : "unavailable" };
 

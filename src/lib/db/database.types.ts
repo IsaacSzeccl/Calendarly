@@ -65,6 +65,7 @@ export type Database = {
           preferences: Json;
           preferences_summary: string | null;
           remember: boolean;
+          submitted_at: string | null;
           is_sample: boolean;
           timezone: string;
           updated_at: string;

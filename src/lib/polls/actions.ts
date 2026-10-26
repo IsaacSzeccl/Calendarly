@@ -28,7 +28,7 @@ async function sendPollUpdateOnce(poll: Poll, reason: "complete" | "closed", ori
     "claim poll update",
   );
   if (!claimed) return;
-  const guests = await getGuests(poll.id);
+  const guests = await getGuests(poll.id, true);
   const count = isComplete(guests.length, poll.expectedCount).text;
   const email = pollUpdateEmail({
     title: poll.title,
@@ -43,7 +43,7 @@ async function sendPollUpdateOnce(poll: Poll, reason: "complete" | "closed", ori
 export async function afterGuestResponse(pollId: string, origin: string): Promise<void> {
   const poll = await getPoll(pollId);
   if (!poll || poll.updateSentAt) return;
-  const guests = await getGuests(poll.id);
+  const guests = await getGuests(poll.id, true);
   if (isComplete(guests.length, poll.expectedCount).complete) {
     await sendPollUpdateOnce(poll, "complete", origin);
   }
@@ -96,7 +96,7 @@ export async function finalizePoll(
     console.error("createEvent failed:", e instanceof Error ? e.message : e);
   }
 
-  const guests = await getGuests(poll.id);
+  const guests = await getGuests(poll.id, true);
   await Promise.all(
     guests.map((g) =>
       sendEmail({
@@ -124,7 +124,7 @@ export async function notifyNewOptions(
   suggestedBy: string,
   origin: string,
 ): Promise<void> {
-  const [guests, options] = await Promise.all([getGuests(poll.id), getOptions(poll.id)]);
+  const [guests, options] = await Promise.all([getGuests(poll.id, true), getOptions(poll.id)]);
   const voted = new Set(
     (await getVotes(options.map((o) => o.id))).map((v) => v.guestId),
   );

@@ -17,7 +17,7 @@ export type Roster = { from: Poll; people: Guest[] };
 export async function rosterFrom(pollId: string, organizerId: string): Promise<Roster | null> {
   const from = await getPoll(pollId);
   if (!from || from.organizerId !== organizerId) return null;
-  const consenting = whoComesAlong(await getGuests(pollId));
+  const consenting = whoComesAlong(await getGuests(pollId, true));
   const statuses = await Promise.all(consenting.map((g) => connectionStatus(g.calendarConnectionId!)));
   return { from, people: consenting.filter((_, i) => statuses[i] === "active") };
 }

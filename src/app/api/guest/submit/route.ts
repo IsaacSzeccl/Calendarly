@@ -22,7 +22,9 @@ const body = z.object({
   name: z.string().trim().min(1, "Add your name.").max(80),
   email: z.email("Add a valid email address.").max(200),
   timezone: z.string().refine(isValidZone),
-  votes: z.record(z.uuid(), z.enum(["yes", "prefer_not", "no"])),
+  votes: z.record(z.uuid(), z.enum(["yes", "prefer_not", "no"])).default({}),
+  /** True for the Save / Send button. False just records who the guest is, so nothing counts yet. */
+  submit: z.boolean().default(true),
 });
 
 export async function POST(request: Request) {
@@ -54,6 +56,7 @@ export async function POST(request: Request) {
       email: input.email,
       timezone: input.timezone,
       votes: input.votes,
+      submit: input.submit,
     });
   } catch (e) {
     if (!(e instanceof EmailTakenError)) throw e;
@@ -85,7 +88,7 @@ export async function POST(request: Request) {
   }
   await writeGuestToken(poll.id, guest.guestToken);
   const origin = new URL(request.url).origin;
-  after(() => afterGuestResponse(poll.id, origin));
+  if (input.submit) after(() => afterGuestResponse(poll.id, origin));
 
   return Response.json({ ok: true, name: guest.name });
 }
