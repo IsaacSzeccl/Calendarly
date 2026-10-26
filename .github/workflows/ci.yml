@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    name: Types, lint, unit tests, AI evals (recorded)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:evals
+
+  e2e:
+    name: Demo path in a browser
+    runs-on: ubuntu-latest
+    needs: checks
+    env:
+      # Add these as repository secrets to run this job; without them it is skipped.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      TOKEN_ENCRYPTION_KEY: ci-only-not-a-real-key
+    steps:
+      - uses: actions/checkout@v4
+        if: env.SUPABASE_SERVICE_ROLE_KEY != ''
+      - uses: actions/setup-node@v4
+        if: env.SUPABASE_SERVICE_ROLE_KEY != ''
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        if: env.SUPABASE_SERVICE_ROLE_KEY != ''
+      - run: npx playwright install --with-deps chromium
+        if: env.SUPABASE_SERVICE_ROLE_KEY != ''
+      - run: npm run test:e2e
+        if: env.SUPABASE_SERVICE_ROLE_KEY != ''
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: test-results/

@@ -1,0 +1,69 @@
+import { createHash } from "node:crypto";
+import { z } from "zod";
+import { complete } from "./complete";
+import { fallbackExplanation, type ExplainFacts } from "./explainText";
+import { explanationSchema, type Explanation } from "./schemas";
+
+export type { ExplainFacts } from "./explainText";
+
+const SYSTEM = `You write the short note at the top of a group-scheduling poll, for the organizer.
+Write like a colleague leaving a sticky note: short, plain, specific. No greeting, no sign-off, no filler.
+
+You are given facts that code has already worked out. Use only those facts:
+- Refer to times as "option N" and may add the day and time given.
+- Never mention scores, points or percentages. Use the given labels only if helpful.
+- Never suggest new times and never change which option is best. Code decided that.
+- You may mention that a different meeting length could help, but never propose a slot.
+
+Write:
+- summary: one or two short sentences, at most 35 words. Say which option is best and the main trade-off, with names ("Option 1 has everyone but Leo."). If people haven't answered yet, say so in a few words. If noClearFit is true, say nothing is a clear fit and waiting or widening the dates may be better. Don't repeat what perOption says, and don't include the "based on" line.
+- conditional: each sentence in "advice", rewritten in at most 15 words, keeping the same option numbers and names. Empty if advice is empty.
+- perOption: for every option, keyed by its number, a fragment of at most 10 words about who can't come or which preference it breaks ("Everyone can come.", "Leo can't; mornings."). 
+
+Reply with only a JSON object matching this JSON Schema:
+${JSON.stringify(z.toJSONSchema(explanationSchema))}`;
+
+/** Bump when the note's style changes, so older notes aren't reused from the cache. */
+const NOTE_STYLE = "short-v2";
+
+export function factsHash(facts: ExplainFacts): string {
+  return createHash("sha256").update(NOTE_STYLE + JSON.stringify(facts)).digest("hex").slice(0, 32);
+}
+
+/** Does the note stick to the facts? Every option covered, advice kept, numbers real. */
+export function faithful(e: Explanation, facts: ExplainFacts): boolean {
+  const numbers = new Set(facts.options.map((o) => String(o.number)));
+  const covered = new Set(e.perOption.map((p) => String(p.option)));
+  if (covered.size !== numbers.size || [...covered].some((n) => !numbers.has(n))) return false;
+  if (facts.advice.length > 0 && e.conditional.length === 0) return false;
+  const mentioned = [e.summary, ...e.conditional].join(" ").match(/option (\d+)/gi) ?? [];
+  if (mentioned.some((m) => !numbers.has(m.replace(/\D/g, "")))) return false;
+  return !/\d+\s?%|percent|score/i.test([e.summary, ...e.conditional, ...e.perOption.map((p) => p.text)].join(" "));
+}
+
+export type ExplainResult = { explanation: Explanation; source: "model" | "fallback" };
+
+/**
+ * Ask the model to phrase what code decided. A previous valid answer for the
+ * same facts is reused, so reloading the dashboard doesn't call the model again.
+ */
+export async function explain(
+  facts: ExplainFacts,
+  cache?: { find(hash: string): Promise<Explanation | null> },
+): Promise<ExplainResult> {
+  if (facts.options.length === 0) return { explanation: fallbackExplanation(facts), source: "fallback" };
+  const hash = factsHash(facts);
+  const cached = await cache?.find(hash).catch(() => null);
+  if (cached && faithful(cached, facts)) return { explanation: cached, source: "model" };
+
+  const result = await complete({
+    job: "explain",
+    system: SYSTEM,
+    // The model sees option numbers, never database ids, so it has nothing long to copy wrongly.
+    user: JSON.stringify({ ...facts, options: facts.options.map((o) => ({ ...o, id: undefined })) }),
+    schema: explanationSchema,
+    input: { hash, facts },
+  });
+  if (result.ok && faithful(result.data, facts)) return { explanation: result.data, source: "model" };
+  return { explanation: fallbackExplanation(facts), source: "fallback" };
+}

@@ -1,0 +1,296 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useRef, useState, useSyncExternalStore } from "react";
+import type { Choice, OptionSource } from "@/lib/engine/types";
+import { slotLabel, timeRange } from "@/lib/format";
+import { ChoicePicker, StatusMark } from "@/components/Availability";
+import { SlotList } from "@/components/SlotList";
+import { Button, Field, Notice, inputClass } from "@/components/ui";
+import { CalendarCard, type CalendarState } from "./CalendarCard";
+import { PickTime } from "./PickTime";
+import { ZonePicker } from "@/components/ZonePicker";
+import { StatementBox } from "./StatementBox";
+
+export type GuestFormProps = {
+  token: string;
+  title: string;
+  organizerName: string;
+  organizerTimezone: string;
+  durationMinutes: number;
+  status: "open" | "closed" | "finalized";
+  closeAt: number | null;
+  listedNames: string[];
+  options: { id: string; start: number; end: number; source: OptionSource }[];
+  finalOption: { start: number; end: number } | null;
+  me: {
+    name: string;
+    email: string;
+    timezone: string;
+    votes: Record<string, Choice>;
+    remember: boolean;
+    /** Pressed Send / Save at least once. */
+    submitted: boolean;
+  } | null;
+  calendar: CalendarState;
+  calendarResult: string | null;
+  /** Other guests who connected a calendar: a nudge, never who they are. */
+  othersConnected: number;
+  testMode: boolean;
+  /** How many more times guests can add (the cap is shared). */
+  room: number;
+  /** Start times a guest could add by hand, worked out on the server; null if the calendar can't be read. */
+  pickable: number[] | null;
+};
+
+const noop = () => () => {};
+
+/** The viewer's own timezone, read after hydration so server and browser agree. */
+function useBrowserZone(fallback: string): string {
+  return useSyncExternalStore(noop, () => Intl.DateTimeFormat().resolvedOptions().timeZone, () => fallback);
+}
+
+export function GuestForm(props: GuestFormProps) {
+  const browserZone = useBrowserZone(props.me?.timezone ?? props.organizerTimezone);
+  // The guest can show times in another zone, e.g. the one their calendar uses, to check them side by side.
+  const [pickedZone, setPickedZone] = useState<string | null>(null);
+  const zone = pickedZone ?? browserZone;
+  const [name, setName] = useState(props.me?.name ?? "");
+  const [email, setEmail] = useState(props.me?.email ?? "");
+  // Calendar marks fill the gaps; anything the guest chose themselves wins.
+  const [votes, setVotes] = useState<Record<string, Choice>>({ ...props.calendar.marks, ...(props.me?.votes ?? {}) });
+  const [touched, setTouched] = useState<Set<string>>(() => new Set(Object.keys(props.me?.votes ?? {})));
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const readOnly = props.status !== "open";
+  const nameOptions = props.me && !props.listedNames.includes(props.me.name)
+    ? [props.me.name, ...props.listedNames]
+    : props.listedNames;
+
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    await save();
+  }
+
+  /**
+   * Post the form. With `submit` (the Save / Send button) the answers are stored and count; without it only
+   * who the guest is is stored, so a calendar can be connected or a time added with nothing counted yet.
+   * Returns false (and shows why) if it can't be saved.
+   */
+  async function post(submit: boolean): Promise<boolean> {
+    if (formRef.current && !formRef.current.reportValidity()) return false;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/guest/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: props.token, name, email, timezone: zone, votes: submit ? votes : {}, submit }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Your answers weren't saved. Try again.");
+      if (submit) setSaved(json.name);
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Your answers weren't saved. Try again.");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const save = () => post(true);
+  const saveIdentity = () => post(false);
+
+  const length =
+    props.durationMinutes % 60 === 0 ? `${props.durationMinutes / 60}-hour` : `${props.durationMinutes}-minute`;
+
+  return (
+    <form ref={formRef} onSubmit={submit} className="space-y-10">
+      <header className="space-y-2">
+        <h1 className="text-4xl">{props.title}</h1>
+        <p className="text-pencil">
+          {props.organizerName} is finding a time for a {length} meeting.
+        </p>
+        <div className="space-y-1">
+          <ZonePicker zone={zone} also={[props.organizerTimezone]} onChange={setPickedZone} />
+          {props.calendar.state === "connected" && (
+            <p className="text-sm text-pencil">
+              Google Calendar may show another timezone. Pick the one your calendar shows to compare times.
+            </p>
+          )}
+        </div>
+      </header>
+
+      {props.status === "finalized" && props.finalOption && (
+        <Notice>
+          {props.organizerName} picked {slotLabel(props.finalOption.start, props.finalOption.end, zone)}.
+        </Notice>
+      )}
+      {props.status === "closed" && (
+        <Notice>This poll has closed. Your answers below are saved and can't be changed.</Notice>
+      )}
+
+      <section className="space-y-4" aria-labelledby="who">
+        <h2 id="who" className="text-2xl">
+          Who are you?
+        </h2>
+        {nameOptions.length > 0 && (
+          <div className="space-y-2">
+            <span className="block text-sm font-medium">Pick your name</span>
+            <div className="flex flex-wrap gap-2">
+              {nameOptions.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  disabled={readOnly}
+                  aria-pressed={name === n}
+                  onClick={() => setName(n)}
+                  className={`min-h-11 rounded-md border px-4 font-medium ${
+                    name === n ? "border-ribbon bg-paper-deep text-ink" : "border-rule text-pencil hover:bg-paper-deep"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={nameOptions.length ? "Or type your name" : "Your name"}>
+            <input
+              className={inputClass}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={readOnly}
+              autoComplete="name"
+              required
+            />
+          </Field>
+          <Field label="Email" hint="Only for updates about this poll.">
+            <input
+              type="email"
+              className={inputClass}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={readOnly}
+              autoComplete="email"
+              required
+            />
+          </Field>
+        </div>
+      </section>
+
+      {!readOnly && (
+        <CalendarCard
+          token={props.token}
+          zone={zone}
+          organizerName={props.organizerName}
+          calendar={props.calendar}
+          calendarResult={props.calendarResult}
+          othersConnected={props.othersConnected}
+          testMode={props.testMode}
+          remember={props.me?.remember ?? false}
+          submitted={props.me?.submitted ?? false}
+          ensureSaved={saveIdentity}
+          onAdded={(added) => setVotes((v) => ({ ...v, [added.id]: "yes" }))}
+        />
+      )}
+
+      <section className="space-y-4" aria-labelledby="times">
+        <div>
+          <h2 id="times" className="text-2xl">
+            Which times work?
+          </h2>
+          <p className="text-pencil">
+            {props.calendar.state === "connected"
+              ? "Filled in from your calendar. Change any you like."
+              : "“Prefer not” means you could, but would rather not."}
+          </p>
+        </div>
+        <SlotList
+          slots={props.options}
+          zone={zone}
+          extra={(slot) =>
+            readOnly ? (
+              <StatusMark status={votes[slot.id!] ?? "unknown"} />
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                {slot.source !== "organizer_free" && <span className="text-sm text-pencil">Suggested</span>}
+                {props.calendar.marks[slot.id!] && !touched.has(slot.id!) && (
+                  <span className="text-sm text-pencil">
+                    {props.calendar.marks[slot.id!] === "no"
+                      ? `Busy ${(props.calendar.busy[slot.id!] ?? [])
+                          .map((b) => timeRange(b.start, b.end, zone))
+                          .join(", ")} on your calendar`
+                      : "Free on your calendar"}
+                  </span>
+                )}
+                <ChoicePicker
+                  label={`Your answer for ${slotLabel(slot.start, slot.end, zone)}`}
+                  value={votes[slot.id!]}
+                  onChange={(c) => {
+                    setVotes((v) => ({ ...v, [slot.id!]: c }));
+                    setTouched((t) => new Set(t).add(slot.id!));
+                    setSaved(null);
+                  }}
+                />
+              </div>
+            )
+          }
+        />
+      </section>
+
+      {!readOnly && (
+        <section aria-labelledby="suggest" className="space-y-4">
+          <h2 id="suggest" className="text-2xl">
+            Suggest a time
+          </h2>
+          <PickTime
+            token={props.token}
+            zone={zone}
+            starts={props.pickable}
+            room={props.room}
+            durationMinutes={props.durationMinutes}
+            ensureSaved={saveIdentity}
+            onAdded={(added) => {
+              setVotes((v) => ({ ...v, [added.id]: "yes" }));
+              router.refresh();
+            }}
+          />
+          <StatementBox
+            token={props.token}
+            zone={zone}
+            ensureSaved={saveIdentity}
+            onAdded={(added) => {
+              setVotes((v) => ({ ...v, ...Object.fromEntries(added.map((o) => [o.id, "yes" as const])) }));
+              router.refresh();
+            }}
+          />
+        </section>
+      )}
+
+      {!readOnly && (
+        <div className="space-y-3">
+          {error && <Notice tone="error">{error}</Notice>}
+          {saved && (
+            <Notice>
+              Saved, thanks {saved}. You can change your answers here until {props.organizerName} picks a time.
+            </Notice>
+          )}
+          {!saved && props.me && !props.me.submitted && (
+            <p className="text-pencil">Not sent yet. Press the button to send your answers.</p>
+          )}
+          <Button type="submit" disabled={saving}>
+            {saving ? "Saving…" : props.me?.submitted || saved ? "Save my changes" : "Send my answers"}
+          </Button>
+        </div>
+      )}
+    </form>
+  );
+}

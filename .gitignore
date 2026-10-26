@@ -4,3 +4,24 @@
 !.env.example
 .omc/*
 .mcp.*
+# dependencies and build output
+/node_modules
+/.next/
+/out/
+/build
+/coverage
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+.DS_Store
+*.pem
+npm-debug.log*
+
+# test output
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# local tool output
+/.playwright-mcp/
